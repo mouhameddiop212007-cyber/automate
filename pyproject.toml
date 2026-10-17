@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "automata-extensions"
+version = "0.1.0"
+description = "Extension pédagogique de automata-lib : algorithmes classiques sur les automates finis"
+requires-python = ">=3.10"
+dependencies = [
+    "automata-lib==9.2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "hypothesis", "ruff", "mypy"]
+
+[tool.setuptools.packages.find]
+include = ["automata_extensions*"]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select = ["E", "W", "F"]
+
+[tool.ruff.format]
+quote-style = "preserve"

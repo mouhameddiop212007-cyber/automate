@@ -1,6 +1,8 @@
 """Classe de base ExtendedFA : combine tous les mixins d'algorithmes ajoutés
 aux automates finis de automata-lib, sans jamais modifier automata-lib."""
 
+from typing import Any, Dict, Set
+
 from .mixins.analyse import AnalyseMixin
 from .mixins.operations import OperationsMixin
 from .mixins.conversions import ConversionsMixin
@@ -18,7 +20,15 @@ class ExtendedFA(
     """Regroupe tous les algorithmes ajoutés. À combiner via héritage multiple
     avec une classe de automata-lib, ex: class ExtendedDFA(ExtendedFA, DFA)."""
 
-    def _successors(self, state, symbol):
+    # Attributs fournis par automata-lib (DFA/NFA) : simples annotations
+    # pour le typage statique, sans effet à l'exécution.
+    states: Any
+    input_symbols: Any
+    transitions: Any
+    initial_state: Any
+    final_states: Any
+
+    def _successors(self, state: Any, symbol: str) -> Set[Any]:
         """Renvoie les états atteints depuis `state` en lisant `symbol`.
 
         Uniformise DFA (transitions[state][symbol] = état unique) et
@@ -35,7 +45,7 @@ class ExtendedFA(
             return set(targets)
         return {targets}
 
-    def _wrap_native_result(self, automaton):
+    def _wrap_native_result(self, automaton: Any) -> "ExtendedFA":
         """Reconstruit un automate Extended* à partir d'un automate natif
         automata-lib (ex: renvoyé par une méthode wrappée comme complement()),
         pour que le résultat reste chaînable avec nos propres algorithmes.
@@ -50,6 +60,7 @@ class ExtendedFA(
         from .dfa import ExtendedDFA
         from .nfa import ExtendedNFA
 
+        target_cls: Any
         if isinstance(automaton, DFA):
             target_cls = ExtendedDFA
         elif isinstance(automaton, NFA):
@@ -57,7 +68,7 @@ class ExtendedFA(
         else:
             target_cls = type(self)
 
-        kwargs = dict(
+        kwargs: Dict[str, Any] = dict(
             states=set(automaton.states),
             input_symbols=set(automaton.input_symbols),
             transitions={s: dict(p) for s, p in automaton.transitions.items()},

@@ -6,6 +6,11 @@ l'instant, car c'est la seule utile à la conversion automate <-> grammaire
 périmètre de ce projet centré sur les automates finis.
 """
 
+from typing import Any, Dict, FrozenSet, Iterable, List, Mapping, Sequence
+
+# Une production est une suite de symboles (terminaux et/ou non-terminaux).
+Production = Sequence[Any]
+
 
 class Grammar:
     """Classe de base abstraite pour toute grammaire formelle.
@@ -18,13 +23,21 @@ class Grammar:
     - start_variable : le non-terminal de départ
     """
 
-    def __init__(self, variables, terminals, rules, start_variable):
-        self.variables = frozenset(variables)
-        self.terminals = frozenset(terminals)
-        self.rules = {v: list(prods) for v, prods in rules.items()}
+    def __init__(
+        self,
+        variables: Iterable[Any],
+        terminals: Iterable[Any],
+        rules: Mapping[Any, Iterable[Production]],
+        start_variable: Any,
+    ) -> None:
+        self.variables: FrozenSet[Any] = frozenset(variables)
+        self.terminals: FrozenSet[Any] = frozenset(terminals)
+        self.rules: Dict[Any, List[Production]] = {
+            v: list(prods) for v, prods in rules.items()
+        }
         self.start_variable = start_variable
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, Grammar)
             and self.variables == other.variables
@@ -33,8 +46,8 @@ class Grammar:
             and self.start_variable == other.start_variable
         )
 
-    def __repr__(self):
-        lines = []
+    def __repr__(self) -> str:
+        lines: List[str] = []
         for var in sorted(self.variables, key=str):
             prods = self.rules.get(var, [])
             rhs = " | ".join(
@@ -53,11 +66,17 @@ class RegularGrammar(Grammar):
     les automates finis).
     """
 
-    def __init__(self, variables, terminals, rules, start_variable):
+    def __init__(
+        self,
+        variables: Iterable[Any],
+        terminals: Iterable[Any],
+        rules: Mapping[Any, Iterable[Production]],
+        start_variable: Any,
+    ) -> None:
         super().__init__(variables, terminals, rules, start_variable)
         self._validate_linear_right()
 
-    def _validate_linear_right(self):
+    def _validate_linear_right(self) -> None:
         for var, prods in self.rules.items():
             for prod in prods:
                 if len(prod) == 0:

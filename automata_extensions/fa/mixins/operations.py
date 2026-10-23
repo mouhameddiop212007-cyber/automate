@@ -65,7 +65,7 @@ class OperationsMixin:
             final_states=set(self.final_states),
         )
 
-    def complement(self):
+    def complement(self, **kwargs):
         """Renvoie le complémentaire du langage reconnu.
 
         Wrapper autour de complement() natif de automata-lib (déjà présent
@@ -78,7 +78,7 @@ class OperationsMixin:
         ----------
         Celle de l'implémentation native de automata-lib.
         """
-        native_result = super().complement()
+        native_result = super().complement(**kwargs)
         return self._wrap_native_result(native_result)
 
     def cartesian_product(self, other, final_predicate=None):
@@ -487,7 +487,7 @@ class OperationsMixin:
                     return False
         return True
 
-    def union(self, other):
+    def union(self, other, **kwargs):
         """Union des deux langages reconnus.
 
         Wrapper autour de union() natif de automata-lib (déjà présent sur
@@ -497,10 +497,10 @@ class OperationsMixin:
         ----------
         Celle de l'implémentation native de automata-lib.
         """
-        native_result = super().union(other)
+        native_result = super().union(other, **kwargs)
         return self._wrap_native_result(native_result)
 
-    def intersection(self, other):
+    def intersection(self, other, **kwargs):
         """Intersection des deux langages reconnus.
 
         Wrapper autour de intersection() natif de automata-lib (déjà
@@ -510,10 +510,10 @@ class OperationsMixin:
         ----------
         Celle de l'implémentation native de automata-lib.
         """
-        native_result = super().intersection(other)
+        native_result = super().intersection(other, **kwargs)
         return self._wrap_native_result(native_result)
 
-    def difference(self, other):
+    def difference(self, other, **kwargs):
         """L(self) privé de L(other).
 
         difference() n'existe nativement que sur DFA (vérifié par
@@ -530,7 +530,7 @@ class OperationsMixin:
         self_dfa = self if isinstance(self, DFA) else self.determinize()
         other_dfa = other if isinstance(other, DFA) else other.determinize()
 
-        native_result = DFA.difference(self_dfa, other_dfa)
+        native_result = DFA.difference(self_dfa, other_dfa, **kwargs)
         return self_dfa._wrap_native_result(native_result)
 
     def concatenate(self, other):

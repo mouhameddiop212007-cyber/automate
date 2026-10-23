@@ -1,12 +1,18 @@
 """Analyse structurelle : parcours, accessibilité, cycles, SCC..."""
 
 from collections import deque
+from typing import TYPE_CHECKING, Any, Dict, List, Set
+
+from ._host import FAHost
+
+if TYPE_CHECKING:
+    from ..base import ExtendedFA
 
 
-class AnalyseMixin:
+class AnalyseMixin(FAHost):
     """Regroupe les algorithmes de parcours et d'analyse structurelle."""
 
-    def dfs(self, start=None):
+    def dfs(self, start: Any = None) -> List[Any]:
         """Parcours en profondeur (itératif, via une pile).
 
         Parameters
@@ -26,8 +32,8 @@ class AnalyseMixin:
         if start is None:
             start = self.initial_state
 
-        visited = set()
-        order = []
+        visited: Set[Any] = set()
+        order: List[Any] = []
         stack = [start]
 
         while stack:
@@ -42,7 +48,7 @@ class AnalyseMixin:
 
         return order
 
-    def bfs(self, start=None):
+    def bfs(self, start: Any = None) -> List[Any]:
         """Parcours en largeur (via une file).
 
         Parameters
@@ -63,7 +69,7 @@ class AnalyseMixin:
             start = self.initial_state
 
         visited = {start}
-        order = []
+        order: List[Any] = []
         queue = deque([start])
 
         while queue:
@@ -77,7 +83,7 @@ class AnalyseMixin:
 
         return order
 
-    def predecessor_states(self, state):
+    def predecessor_states(self, state: Any) -> Set[Any]:
         """Calcule les prédécesseurs d'un état (transitions inversées).
 
         Parameters
@@ -94,14 +100,14 @@ class AnalyseMixin:
         ----------
         O(|E|)
         """
-        preds = set()
+        preds: Set[Any] = set()
         for source_state in self.states:
             for symbol in self.transitions.get(source_state, {}):
                 if state in self._successors(source_state, symbol):
                     preds.add(source_state)
         return preds
 
-    def accessible_states(self):
+    def accessible_states(self) -> Set[Any]:
         """Calcule les états accessibles depuis l'état initial.
 
         Returns
@@ -115,7 +121,7 @@ class AnalyseMixin:
         """
         return set(self.dfs())
 
-    def is_accessible(self, state):
+    def is_accessible(self, state: Any) -> bool:
         """Teste si un état est accessible depuis l'état initial.
 
         Complexity
@@ -124,7 +130,7 @@ class AnalyseMixin:
         """
         return state in self.accessible_states()
 
-    def reachable_states_from(self, state):
+    def reachable_states_from(self, state: Any) -> Set[Any]:
         """Calcule les états atteignables depuis un état donné.
 
         Parameters
@@ -143,7 +149,7 @@ class AnalyseMixin:
         """
         return set(self.dfs(start=state))
 
-    def coaccessible_states(self):
+    def coaccessible_states(self) -> Set[Any]:
         """Calcule les états coaccessibles (états depuis lesquels on peut
         atteindre un état final).
 
@@ -166,7 +172,7 @@ class AnalyseMixin:
         # qui n'existe pas dans self.states
         return accessible_in_reversed & set(self.states)
 
-    def is_coaccessible(self, state):
+    def is_coaccessible(self, state: Any) -> bool:
         """Teste si un état est coaccessible.
 
         Complexity
@@ -175,7 +181,7 @@ class AnalyseMixin:
         """
         return state in self.coaccessible_states()
 
-    def useful_states(self):
+    def useful_states(self) -> Set[Any]:
         """Calcule les états utiles (accessibles ET coaccessibles).
 
         Returns
@@ -189,7 +195,9 @@ class AnalyseMixin:
         """
         return self.accessible_states() & self.coaccessible_states()
 
-    def induced_subautomaton(self, states_subset, initial_state=None):
+    def induced_subautomaton(
+        self, states_subset: Set[Any], initial_state: Any = None
+    ) -> "ExtendedFA":
         """Renvoie un nouvel automate restreint à un sous-ensemble d'états.
 
         Les transitions vers des états hors du sous-ensemble sont retirées.
@@ -223,7 +231,7 @@ class AnalyseMixin:
                 "sous-ensemble d'états."
             )
 
-        new_transitions = {}
+        new_transitions: Dict[Any, Dict[Any, Any]] = {}
         for state in states_subset:
             new_transitions[state] = {}
             for symbol in self.transitions.get(state, {}):
@@ -235,7 +243,7 @@ class AnalyseMixin:
                     else:
                         new_transitions[state][symbol] = next(iter(targets))
 
-        kwargs = dict(
+        kwargs: Dict[str, Any] = dict(
             states=states_subset,
             input_symbols=set(self.input_symbols),
             transitions=new_transitions,
@@ -247,9 +255,10 @@ class AnalyseMixin:
             # manquantes) : c'est un résultat légitime, pas une erreur.
             kwargs["allow_partial"] = True
 
-        return type(self)(**kwargs)
+        automaton_cls: Any = type(self)
+        return automaton_cls(**kwargs)
 
-    def trim(self):
+    def trim(self) -> "ExtendedFA":
         """Renvoie un nouvel automate émondé (restreint aux états utiles).
 
         Cas particulier : si aucun état n'est utile (langage vide), on ne
@@ -271,7 +280,7 @@ class AnalyseMixin:
             from automata.fa.dfa import DFA
 
             trap = "__empty_language__"
-            kwargs = dict(
+            kwargs: Dict[str, Any] = dict(
                 states={trap},
                 input_symbols=set(self.input_symbols),
                 transitions={trap: {s: trap for s in self.input_symbols}},
@@ -280,10 +289,11 @@ class AnalyseMixin:
             )
             if isinstance(self, DFA):
                 kwargs["allow_partial"] = True
-            return type(self)(**kwargs)
+            automaton_cls: Any = type(self)
+            return automaton_cls(**kwargs)
         return self.induced_subautomaton(useful)
 
-    def is_trim(self):
+    def is_trim(self) -> bool:
         """Teste si l'automate est déjà émondé (tous les états sont utiles).
 
         Complexity
@@ -292,7 +302,7 @@ class AnalyseMixin:
         """
         return self.useful_states() == set(self.states)
 
-    def strongly_connected_components(self):
+    def strongly_connected_components(self) -> List[Set[Any]]:
         """Calcule les composantes fortement connexes (algorithme de Tarjan).
 
         Une SCC est un ensemble maximal d'états mutuellement atteignables
@@ -313,13 +323,13 @@ class AnalyseMixin:
         Tarjan, R. E. (1972). Depth-first search and linear graph algorithms.
         """
         index_counter = [0]
-        index = {}  # état -> ordre de découverte
-        lowlink = {}  # état -> plus petit index atteignable
-        on_stack = set()
-        stack = []
-        sccs = []
+        index: Dict[Any, int] = {}  # état -> ordre de découverte
+        lowlink: Dict[Any, int] = {}  # état -> plus petit index atteignable
+        on_stack: Set[Any] = set()
+        stack: List[Any] = []
+        sccs: List[Set[Any]] = []
 
-        def strongconnect(state):
+        def strongconnect(state: Any) -> None:
             index[state] = index_counter[0]
             lowlink[state] = index_counter[0]
             index_counter[0] += 1
@@ -338,7 +348,7 @@ class AnalyseMixin:
 
             # state est une racine de SCC : on dépile toute la composante
             if lowlink[state] == index[state]:
-                scc = set()
+                scc: Set[Any] = set()
                 while True:
                     member = stack.pop()
                     on_stack.discard(member)
@@ -353,7 +363,7 @@ class AnalyseMixin:
 
         return sccs
 
-    def has_cycle(self):
+    def has_cycle(self) -> bool:
         """Détecte l'existence d'un cycle dans l'automate.
 
         Un cycle existe si une composante fortement connexe contient
@@ -373,7 +383,7 @@ class AnalyseMixin:
                     return True
         return False
 
-    def has_cycle_from(self, state):
+    def has_cycle_from(self, state: Any) -> bool:
         """Détecte l'existence d'un cycle accessible depuis un état donné.
 
         Restreint la détection au sous-automate induit par les états
@@ -387,7 +397,7 @@ class AnalyseMixin:
         sub = self.induced_subautomaton(reachable, initial_state=state)
         return sub.has_cycle()
 
-    def is_language_empty(self):
+    def is_language_empty(self) -> bool:
         """Décide si le langage reconnu est vide.
 
         Le langage est vide si aucun état accessible n'est final.
@@ -398,7 +408,7 @@ class AnalyseMixin:
         """
         return len(self.accessible_states() & set(self.final_states)) == 0
 
-    def is_language_infinite(self):
+    def is_language_infinite(self) -> bool:
         """Décide si le langage reconnu est infini.
 
         Le langage est infini s'il existe un cycle à la fois accessible
@@ -420,7 +430,7 @@ class AnalyseMixin:
         )
         return sub.has_cycle()
 
-    def accepts_word(self, word):
+    def accepts_word(self, word: str) -> bool:
         """Teste si un mot est reconnu par l'automate.
 
         Wrapper autour de accepts_input() de automata-lib (ne réimplémente
@@ -432,7 +442,7 @@ class AnalyseMixin:
         """
         return self.accepts_input(word)
 
-    def execution_trace(self, word):
+    def execution_trace(self, word: str) -> List[Any]:
         """Calcule la trace d'exécution d'un mot : la suite des (ensembles
         d')états visités au fil de la lecture.
 
@@ -454,7 +464,7 @@ class AnalyseMixin:
         from automata.fa.dfa import DFA
 
         if isinstance(self, DFA):
-            trace = [self.initial_state]
+            trace: List[Any] = [self.initial_state]
             current = self.initial_state
             for symbol in word:
                 successors = self._successors(current, symbol)
@@ -470,7 +480,7 @@ class AnalyseMixin:
             current_set = self.epsilon_closure(self.initial_state)
             trace = [current_set]
             for symbol in word:
-                next_set = set()
+                next_set: Set[Any] = set()
                 for state in current_set:
                     next_set |= self._successors(state, symbol)
                 current_set = (

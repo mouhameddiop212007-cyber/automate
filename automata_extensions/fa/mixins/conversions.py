@@ -1,12 +1,24 @@
 """Conversions regex <-> automates (Brzozowski, Thompson, etc.)."""
 
-from ...regex_ast import parse_regex, derivative, is_nullable, to_string
+from typing import TYPE_CHECKING, Any, Dict, FrozenSet, Optional, Set, Tuple
+
+from ...regex_ast import (
+    RegexNode,
+    derivative,
+    is_nullable,
+    parse_regex,
+    to_string,
+)
+from ._host import FAHost
+
+if TYPE_CHECKING:
+    from ..base import ExtendedFA
 
 
-class ConversionsMixin:
+class ConversionsMixin(FAHost):
     """Regroupe les conversions entre représentations (regex, automates)."""
 
-    def reverse(self):
+    def reverse(self) -> "ExtendedFA":
         """Renvoie l'automate renversé : transitions inversées, échange
         initial/finaux. Un nouvel état initial unique est créé, relié par
         epsilon aux anciens états finaux (le résultat est donc un NFA).
@@ -33,7 +45,9 @@ class ConversionsMixin:
             new_initial += "_"
 
         new_states = set(self.states) | {new_initial}
-        new_transitions = {state: {} for state in new_states}
+        new_transitions: Dict[Any, Dict[Any, Set[Any]]] = {
+            state: {} for state in new_states
+        }
 
         for state in self.states:
             for symbol in self.input_symbols:
@@ -53,7 +67,7 @@ class ConversionsMixin:
             final_states={self.initial_state},
         )
 
-    def epsilon_closure(self, states):
+    def epsilon_closure(self, states: Any) -> Set[Any]:
         """Calcule l'epsilon-fermeture d'un état ou d'un ensemble d'états.
 
         L'epsilon-fermeture d'un ensemble S est l'ensemble de tous les états
@@ -89,7 +103,7 @@ class ConversionsMixin:
 
         return closure
 
-    def determinize(self):
+    def determinize(self) -> "ExtendedFA":
         """Convertit un NFA en DFA équivalent (sous-ensembles).
 
         Ne visite que les sous-ensembles d'états réellement accessibles
@@ -109,8 +123,8 @@ class ConversionsMixin:
 
         initial_closure = frozenset(self.epsilon_closure(self.initial_state))
 
-        new_states = {initial_closure}
-        new_transitions = {}
+        new_states: Set[FrozenSet[Any]] = {initial_closure}
+        new_transitions: Dict[FrozenSet[Any], Dict[Any, FrozenSet[Any]]] = {}
         stack = [initial_closure]
         while stack:
             current = stack.pop()
@@ -120,7 +134,7 @@ class ConversionsMixin:
             new_transitions[current] = {}
 
             for symbol in self.input_symbols:
-                next_set = set()
+                next_set: Set[Any] = set()
                 for state in current:
                     next_set |= self._successors(state, symbol)
                 next_closure = (
@@ -135,7 +149,7 @@ class ConversionsMixin:
                     stack.append(next_closure)
 
         # état puits explicite pour les sous-ensembles vides, si nécessaire
-        empty_state = frozenset()
+        empty_state: FrozenSet[Any] = frozenset()
         if empty_state in new_states:
             new_transitions[empty_state] = {
                 symbol: empty_state for symbol in self.input_symbols
@@ -164,7 +178,7 @@ class ConversionsMixin:
             final_states={state_names[state] for state in new_final_states},
         )
 
-    def remove_epsilon_transitions(self):
+    def remove_epsilon_transitions(self) -> "ExtendedFA":
         """Renvoie un NFA équivalent sans transitions epsilon.
 
         Sur un NFA, wrappe eliminate_lambda() natif de automata-lib (même
@@ -180,7 +194,8 @@ class ConversionsMixin:
         from automata.fa.dfa import DFA
 
         if isinstance(self, DFA):
-            return type(self)(
+            automaton_cls: Any = type(self)
+            return automaton_cls(
                 states=set(self.states),
                 input_symbols=set(self.input_symbols),
                 transitions={s: dict(p) for s, p in self.transitions.items()},
@@ -192,7 +207,7 @@ class ConversionsMixin:
         native_result = self.eliminate_lambda()
         return self._wrap_native_result(native_result)
 
-    def is_universal_language(self):
+    def is_universal_language(self) -> bool:
         """Décide si le langage reconnu est Σ* tout entier (DFA).
 
         Réduction classique : L(self) = Σ* ssi complement(L(self)) est vide.
@@ -203,7 +218,7 @@ class ConversionsMixin:
         """
         return self.complement().is_language_empty()
 
-    def eliminate_epsilon_states_normalized(self):
+    def eliminate_epsilon_states_normalized(self) -> "ExtendedFA":
         """Élimination directe des transitions epsilon, sur un ε-AFND
         normalisé (méthode alternative à remove_epsilon_transitions).
 
@@ -224,7 +239,7 @@ class ConversionsMixin:
         transitions = {s: dict(self.transitions.get(s, {})) for s in states}
         final_states = set(self.final_states)
 
-        def eps_targets(state):
+        def eps_targets(state: Any) -> Set[Any]:
             t = transitions[state].get("", set())
             if isinstance(t, str):
                 t = {t}
@@ -276,7 +291,9 @@ class ConversionsMixin:
         )
 
     @classmethod
-    def regex_to_nfa(cls, regex, input_symbols):
+    def regex_to_nfa(
+        cls, regex: str, input_symbols: Set[str]
+    ) -> "ExtendedFA":
         """Construit un NFA reconnaissant le langage d'une expression
         régulière (construction de Thompson).
 
@@ -305,7 +322,7 @@ class ConversionsMixin:
             final_states=set(native_result.final_states),
         )
 
-    def to_regex_state_elimination(self):
+    def to_regex_state_elimination(self) -> str:
         """Convertit l'automate en expression régulière équivalente, par
         élimination d'états successive.
 
@@ -325,12 +342,12 @@ class ConversionsMixin:
         from automata.fa.dfa import DFA
         from automata.fa.gnfa import GNFA
 
-        dfa = self if isinstance(self, DFA) else self.determinize()
+        dfa: Any = self if isinstance(self, DFA) else self.determinize()
         gnfa = GNFA.from_dfa(dfa)
         return gnfa.to_regex()
 
     @staticmethod
-    def brzozowski_derivative(regex, symbol):
+    def brzozowski_derivative(regex: str, symbol: str) -> str:
         """Calcule la dérivée de Brzozowski d'une expression régulière par
         rapport à un symbole (calcul récursif direct sur l'AST).
 
@@ -352,7 +369,9 @@ class ConversionsMixin:
         return to_string(derivative(node, symbol))
 
     @classmethod
-    def brzozowski_automaton(cls, regex, input_symbols):
+    def brzozowski_automaton(
+        cls, regex: str, input_symbols: Set[str]
+    ) -> "ExtendedFA":
         """Construit l'automate de Brzozowski d'une expression régulière :
         les états sont les dérivées distinctes de l'expression de départ.
 
@@ -377,13 +396,13 @@ class ConversionsMixin:
         state_names = {root: "q0"}
         counter = [1]
 
-        def name_for(node):
+        def name_for(node: RegexNode) -> str:
             if node not in state_names:
                 state_names[node] = f"q{counter[0]}"
                 counter[0] += 1
             return state_names[node]
 
-        transitions = {}
+        transitions: Dict[str, Dict[str, str]] = {}
         stack = [root]
         seen = {root}
 
@@ -408,7 +427,7 @@ class ConversionsMixin:
             allow_partial=True,
         )
 
-    def to_regex_arden(self):
+    def to_regex_arden(self) -> str:
         """Convertit l'automate en expression régulière équivalente, par
         résolution du système d'équations de langages associé (lemme
         d'Arden). Réutilise solve_equation_system (#58) : chaque état est
@@ -426,11 +445,13 @@ class ConversionsMixin:
         from ...regex_ast import solve_equation_system
         from automata.fa.dfa import DFA
 
-        dfa = self if isinstance(self, DFA) else self.determinize()
+        dfa: Any = self if isinstance(self, DFA) else self.determinize()
 
-        equations = {}
+        equations: Dict[
+            Any, Tuple[Dict[Any, str], Optional[str]]
+        ] = {}
         for state in dfa.states:
-            coef = {}
+            coef: Dict[Any, str] = {}
             for symbol in dfa.input_symbols:
                 for target in dfa._successors(state, symbol):
                     coef[target] = coef.get(target, "")

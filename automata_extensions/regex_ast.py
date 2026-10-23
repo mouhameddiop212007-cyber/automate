@@ -6,6 +6,9 @@ concaténation (juxtaposition), union (|), étoile de Kleene (*),
 parenthésage. Pas de classes de caractères ni d'échappement.
 """
 
+from typing import ClassVar, Dict, FrozenSet, Iterable, List, Optional
+from typing import Tuple
+
 
 class RegexNode:
     """Classe de base des nœuds de l'AST."""
@@ -16,56 +19,56 @@ class RegexNode:
 class Empty(RegexNode):
     """Langage vide (∅) : ne reconnaît rien, pas même le mot vide."""
 
-    _instance = None
+    _instance: ClassVar[Optional["Empty"]] = None
 
-    def __new__(cls):
+    def __new__(cls) -> "Empty":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, Empty)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash("EMPTY")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "∅"
 
 
 class Epsilon(RegexNode):
     """Mot vide (ε) : reconnaît uniquement la chaîne vide."""
 
-    _instance = None
+    _instance: ClassVar[Optional["Epsilon"]] = None
 
-    def __new__(cls):
+    def __new__(cls) -> "Epsilon":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, Epsilon)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash("EPSILON")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "ε"
 
 
 class Symbol(RegexNode):
     """Un symbole unique de l'alphabet."""
 
-    def __init__(self, char):
+    def __init__(self, char: str) -> None:
         self.char = char
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, Symbol) and other.char == self.char
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(("SYMBOL", self.char))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.char
 
 
@@ -73,48 +76,48 @@ class Union(RegexNode):
     """Union de plusieurs sous-expressions (représentée à plat, comme un
     ensemble, pour que r|r et r soient structurellement identiques)."""
 
-    def __init__(self, parts):
-        self.parts = frozenset(parts)
+    def __init__(self, parts: Iterable[RegexNode]) -> None:
+        self.parts: FrozenSet[RegexNode] = frozenset(parts)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, Union) and other.parts == self.parts
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(("UNION", self.parts))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "(" + "|".join(sorted(repr(p) for p in self.parts)) + ")"
 
 
 class Concat(RegexNode):
     """Concaténation de sous-expressions, représentée à plat (tuple)."""
 
-    def __init__(self, parts):
-        self.parts = tuple(parts)
+    def __init__(self, parts: Iterable[RegexNode]) -> None:
+        self.parts: Tuple[RegexNode, ...] = tuple(parts)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, Concat) and other.parts == self.parts
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(("CONCAT", self.parts))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "".join(repr(p) for p in self.parts)
 
 
 class Star(RegexNode):
     """Étoile de Kleene d'une sous-expression."""
 
-    def __init__(self, inner):
+    def __init__(self, inner: RegexNode) -> None:
         self.inner = inner
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, Star) and other.inner == self.inner
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(("STAR", self.inner))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         inner_repr = repr(self.inner)
         if isinstance(self.inner, Symbol):
             return f"{inner_repr}*"
@@ -126,23 +129,23 @@ class Star(RegexNode):
 # nœud (essentiel pour que brzozowski_automaton termine avec peu d'états).
 
 
-def mk_union(nodes):
-    flat = []
+def mk_union(nodes: Iterable[RegexNode]) -> RegexNode:
+    flat: List[RegexNode] = []
     for n in nodes:
         if isinstance(n, Union):
             flat.extend(n.parts)
         elif not isinstance(n, Empty):
             flat.append(n)
-    flat = set(flat)
-    if not flat:
+    unique = set(flat)
+    if not unique:
         return Empty()
-    if len(flat) == 1:
-        return next(iter(flat))
-    return Union(flat)
+    if len(unique) == 1:
+        return next(iter(unique))
+    return Union(unique)
 
 
-def mk_concat(nodes):
-    flat = []
+def mk_concat(nodes: Iterable[RegexNode]) -> RegexNode:
+    flat: List[RegexNode] = []
     for n in nodes:
         if isinstance(n, Concat):
             flat.extend(n.parts)
@@ -159,7 +162,7 @@ def mk_concat(nodes):
     return Concat(flat)
 
 
-def mk_star(node):
+def mk_star(node: RegexNode) -> RegexNode:
     if isinstance(node, (Empty, Epsilon)):
         return Epsilon()
     if isinstance(node, Star):
@@ -170,42 +173,45 @@ def mk_star(node):
 # --- Analyse syntaxique ---
 
 
-def parse_regex(text):
+def parse_regex(text: str) -> RegexNode:
     """Analyse une expression régulière en AST.
 
     Grammaire (priorité croissante) : union (|) < concaténation < étoile (*).
     """
     pos = [0]
 
-    def peek():
+    def peek() -> Optional[str]:
         return text[pos[0]] if pos[0] < len(text) else None
 
-    def advance():
+    def advance() -> str:
         c = text[pos[0]]
         pos[0] += 1
         return c
 
-    def parse_union():
+    def parse_union() -> RegexNode:
         parts = [parse_concat()]
         while peek() == "|":
             advance()
             parts.append(parse_concat())
         return mk_union(parts) if len(parts) > 1 else parts[0]
 
-    def parse_concat():
-        parts = []
-        while peek() is not None and peek() not in "|)":
+    def parse_concat() -> RegexNode:
+        parts: List[RegexNode] = []
+        while True:
+            c = peek()
+            if c is None or c in "|)":
+                break
             parts.append(parse_star())
         return mk_concat(parts)
 
-    def parse_star():
+    def parse_star() -> RegexNode:
         atom = parse_atom()
         while peek() == "*":
             advance()
             atom = mk_star(atom)
         return atom
 
-    def parse_atom():
+    def parse_atom() -> RegexNode:
         c = peek()
         if c == "(":
             advance()
@@ -227,11 +233,11 @@ def parse_regex(text):
     return result
 
 
-def to_string(node):
+def to_string(node: RegexNode) -> str:
     return repr(node)
 
 
-def is_nullable(node):
+def is_nullable(node: RegexNode) -> bool:
     """Teste si le mot vide appartient au langage dénoté par `node`."""
     if isinstance(node, Epsilon):
         return True
@@ -246,7 +252,7 @@ def is_nullable(node):
     raise TypeError(f"nœud inconnu : {node!r}")
 
 
-def derivative(node, symbol):
+def derivative(node: RegexNode, symbol: str) -> RegexNode:
     """Calcule la dérivée de Brzozowski de `node` par rapport à `symbol`.
 
     D_a(L) = {w : aw ∈ L} — le quotient à gauche du langage par le
@@ -271,7 +277,7 @@ def derivative(node, symbol):
     raise TypeError(f"nœud inconnu : {node!r}")
 
 
-def arden_lemma(coef_regex, const_regex):
+def arden_lemma(coef_regex: str, const_regex: str) -> str:
     """Résout une équation rationnelle unique X = coef_regex . X + const_regex
     (avec coef_regex ne contenant pas le mot vide), via le lemme d'Arden :
     la solution est X = coef_regex* . const_regex.
@@ -292,7 +298,10 @@ def arden_lemma(coef_regex, const_regex):
     return to_string(result)
 
 
-def solve_equation_system(equations, start_variable):
+def solve_equation_system(
+    equations: Dict[str, Tuple[Dict[str, str], Optional[str]]],
+    start_variable: str,
+) -> str:
     """Résout un système d'équations rationnelles par élimination et
     substitution successive (généralisation d'arden_lemma à plusieurs
     variables), puis lemme d'Arden sur l'équation finale auto-référente.
@@ -315,8 +324,8 @@ def solve_equation_system(equations, start_variable):
     O(n^3) où n est le nombre de variables.
     """
     variables = list(equations.keys())
-    coef = {}
-    const = {}
+    coef: Dict[str, Dict[str, RegexNode]] = {}
+    const: Dict[str, RegexNode] = {}
     for var in variables:
         raw_coef, raw_const = equations[var]
         coef[var] = {

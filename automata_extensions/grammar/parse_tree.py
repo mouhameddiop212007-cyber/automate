@@ -45,5 +45,5 @@ class Node:
             prefix += nodes[i - 1].leaf.symbol
             steps.append(prefix + str(nodes[i].variable))
         steps.append(prefix)  # forme finale, après application de la
-                               # dernière règle (variable -> ε)
+        # dernière règle (variable -> ε)
         return " => ".join(steps)

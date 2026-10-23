@@ -1,4 +1,3 @@
-
 """Property-based testing : vérifie des invariants mathématiques sur des
 automates générés aléatoirement (hypothesis), en complément des tests
 unitaires classiques à exemples fixes.
@@ -75,6 +74,7 @@ def test_trim_result_is_always_trim(dfa):
         return  # cas particulier assumé, voir docstring de trim()
     assert trimmed.is_trim() is True
 
+
 @given(dfa=dfas(), word=words)
 @settings(max_examples=200)
 def test_reverse_twice_preserves_language(dfa, word):
@@ -90,6 +90,7 @@ def test_to_grammar_roundtrip_preserves_language(dfa, word):
     """Convertir en grammaire puis reconstruire l'automate ne doit pas
     changer le langage reconnu (#55, aller-retour)."""
     from automata_extensions.fa.nfa import ExtendedNFA
+
     grammar = dfa.to_grammar()
     rebuilt = ExtendedNFA.grammar_to_automaton(grammar)
     assert dfa.accepts_input(word) == rebuilt.accepts_input(word)
@@ -125,6 +126,7 @@ def test_difference_of_self_is_always_empty(dfa1, dfa2, word):
     diff = dfa1.difference(dfa1)
     assert diff.accepts_input(word) is False
 
+
 @given(dfa=dfas(), word=words)
 @settings(max_examples=200)
 def test_minimize_hopcroft_agrees_with_classic_minimize(dfa, word):
@@ -133,6 +135,7 @@ def test_minimize_hopcroft_agrees_with_classic_minimize(dfa, word):
     classic = dfa.minimize()
     hopcroft = dfa.minimize_hopcroft()
     assert classic.accepts_input(word) == hopcroft.accepts_input(word)
+
 
 @given(dfa=dfas())
 @settings(max_examples=200)

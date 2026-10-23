@@ -1,6 +1,6 @@
 from automata_extensions.fa.nfa import ExtendedNFA
 from automata_extensions.fa.dfa import ExtendedDFA
-from tests.conftest import make_simple_dfa, make_epsilon_nfa
+from tests.conftest import make_simple_dfa
 
 
 def test_is_complete_true():
@@ -68,14 +68,17 @@ def test_language_subset_false_when_not_included():
         input_symbols={'a', 'b'},
         transitions={
             '1': {'a': '2', 'b': '3'},
-            '2': {'a': '3', 'b': '3'},  # pas de boucle sur '2' : langage plus restreint
+            '2': {
+                'a': '3',
+                'b': '3',
+            },  # pas de boucle sur '2' : langage plus restreint
             '3': {'a': '3', 'b': '3'},
         },
         initial_state='1',
         final_states={'2'},
     )
     dfa = make_simple_dfa()
-    # dfa accepte 'a', 'aa', 'aaa'... (boucle sur '2') ; narrow_dfa n'accepte que 'a'
+    # dfa accepte 'a', 'aa', 'aaa'... ; narrow_dfa n'accepte que 'a'
     assert narrow_dfa.language_subset(dfa) is True
     assert dfa.language_subset(narrow_dfa) is False
 
@@ -129,7 +132,9 @@ def test_is_isomorphic_false_for_different_final_states_position():
             '3': {'a': '3', 'b': '3'},
         },
         initial_state='1',
-        final_states={'3'},  # au lieu de '2' : structure identique, finaux différents
+        final_states={
+            '3'
+        },  # au lieu de '2' : structure identique, finaux différents
     )
     assert dfa.is_isomorphic(different_final_dfa) is False
 
@@ -167,8 +172,8 @@ def test_prefix_closed_sublanguage_keeps_only_final_paths():
         final_states={'1', '3'},  # '2' n'est pas final : coupe le chemin
     )
     sub = dfa.prefix_closed_sublanguage()
-    assert sub.accepts_input('')     # '1' est final
-    assert not sub.accepts_input('a')   # passe par '2', non final : exclu
+    assert sub.accepts_input('')  # '1' est final
+    assert not sub.accepts_input('a')  # passe par '2', non final : exclu
 
 
 def test_distinguishable_states_on_simple_dfa():
@@ -241,19 +246,23 @@ def test_is_deterministic_false_on_true_nfa():
 
 def test_union_accepts_words_from_either_language():
     dfa1 = ExtendedDFA(
-        states={'1', '2'}, input_symbols={'a', 'b'},
+        states={'1', '2'},
+        input_symbols={'a', 'b'},
         transitions={'1': {'a': '2', 'b': '1'}, '2': {'a': '2', 'b': '2'}},
-        initial_state='1', final_states={'2'},
+        initial_state='1',
+        final_states={'2'},
     )
     dfa2 = ExtendedDFA(
-        states={'1', '2'}, input_symbols={'a', 'b'},
+        states={'1', '2'},
+        input_symbols={'a', 'b'},
         transitions={'1': {'a': '1', 'b': '2'}, '2': {'a': '2', 'b': '2'}},
-        initial_state='1', final_states={'2'},
+        initial_state='1',
+        final_states={'2'},
     )
     u = dfa1.union(dfa2)
-    assert u.accepts_input('a') is True   # accepté par dfa1
-    assert u.accepts_input('b') is True   # accepté par dfa2
-    assert u.accepts_input('') is False   # rejeté par les deux
+    assert u.accepts_input('a') is True  # accepté par dfa1
+    assert u.accepts_input('b') is True  # accepté par dfa2
+    assert u.accepts_input('') is False  # rejeté par les deux
 
 
 def test_intersection_only_accepts_common_words():
@@ -271,25 +280,35 @@ def test_difference_on_two_dfas():
 
 def test_concatenate_combines_languages():
     a_dfa = ExtendedDFA(
-        states={'1', '2'}, input_symbols={'a', 'b'},
+        states={'1', '2'},
+        input_symbols={'a', 'b'},
         transitions={'1': {'a': '2', 'b': '1'}, '2': {'a': '2', 'b': '2'}},
-        initial_state='1', final_states={'2'},
+        initial_state='1',
+        final_states={'2'},
     )
     b_dfa = ExtendedDFA(
-        states={'1', '2'}, input_symbols={'a', 'b'},
+        states={'1', '2'},
+        input_symbols={'a', 'b'},
         transitions={'1': {'a': '1', 'b': '2'}, '2': {'a': '2', 'b': '2'}},
-        initial_state='1', final_states={'2'},
+        initial_state='1',
+        final_states={'2'},
     )
     concat = a_dfa.concatenate(b_dfa)
-    assert concat.accepts_input('ab') is True   # 'a' accepté par a_dfa, 'b' par b_dfa
-    assert concat.accepts_input('a') is False   # b_dfa n'accepte pas le mot vide après
+    assert (
+        concat.accepts_input('ab') is True
+    )  # 'a' accepté par a_dfa, 'b' par b_dfa
+    assert (
+        concat.accepts_input('a') is False
+    )  # b_dfa n'accepte pas le mot vide après
 
 
 def test_kleene_star_accepts_empty_word():
     dfa = ExtendedDFA(
-        states={'1', '2'}, input_symbols={'a'},
+        states={'1', '2'},
+        input_symbols={'a'},
         transitions={'1': {'a': '2'}, '2': {'a': '2'}},
-        initial_state='1', final_states={'2'},
+        initial_state='1',
+        final_states={'2'},
     )
     star = dfa.kleene_star()
     assert star.accepts_input('') is True
@@ -299,11 +318,17 @@ def test_kleene_star_accepts_empty_word():
 
 def test_left_quotient_word_on_dfa():
     dfa = ExtendedDFA(
-        states={'1', '2', '3'}, input_symbols={'a', 'b'},
-        transitions={'1': {'a': '2', 'b': '1'}, '2': {'a': '2', 'b': '3'}, '3': {'a': '3', 'b': '3'}},
-        initial_state='1', final_states={'3'},
+        states={'1', '2', '3'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '1': {'a': '2', 'b': '1'},
+            '2': {'a': '2', 'b': '3'},
+            '3': {'a': '3', 'b': '3'},
+        },
+        initial_state='1',
+        final_states={'3'},
     )
-    # L(dfa) = mots contenant "ab" ; quotient par 'a' = mots contenant "b" ou déjà après "ab"
+    # L(dfa) = mots contenant "ab" ; quotient par 'a' : "b" ou déjà "ab"
     quotient = dfa.left_quotient_word('a')
     assert quotient.accepts_input('b') is True
     assert quotient.accepts_input('') is False
@@ -311,23 +336,33 @@ def test_left_quotient_word_on_dfa():
 
 def test_left_quotient_word_empty_when_prefix_rejected():
     partial_dfa = ExtendedDFA(
-        states={'1', '2'}, input_symbols={'a', 'b'},
+        states={'1', '2'},
+        input_symbols={'a', 'b'},
         transitions={'1': {'a': '2'}, '2': {'a': '2'}},
-        initial_state='1', final_states={'2'},
+        initial_state='1',
+        final_states={'2'},
         allow_partial=True,
     )
-    quotient = partial_dfa.left_quotient_word('b')  # pas de transition 'b' depuis '1'
+    quotient = partial_dfa.left_quotient_word(
+        'b'
+    )  # pas de transition 'b' depuis '1'
     assert quotient.is_language_empty() is True
 
 
 def test_right_quotient_word_on_dfa():
     dfa = ExtendedDFA(
-        states={'1', '2', '3'}, input_symbols={'a', 'b'},
-        transitions={'1': {'a': '2', 'b': '1'}, '2': {'a': '2', 'b': '3'}, '3': {'a': '3', 'b': '3'}},
-        initial_state='1', final_states={'3'},
+        states={'1', '2', '3'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '1': {'a': '2', 'b': '1'},
+            '2': {'a': '2', 'b': '3'},
+            '3': {'a': '3', 'b': '3'},
+        },
+        initial_state='1',
+        final_states={'3'},
     )
     # L(dfa) = mots contenant "ab" ; quotient à droite par 'b' = mots dont
-    # l'ajout de 'b' contient "ab", donc mots contenant déjà "ab" ou finissant par 'a'
+    # ajout de 'b' : mots contenant déjà "ab" ou finissant par 'a'
     quotient = dfa.right_quotient_word('b')
     assert quotient.accepts_input('ab') is True
 
@@ -357,12 +392,16 @@ def test_minimize_hopcroft_preserves_language():
 
 def test_minimize_hopcroft_matches_minimize_state_count():
     dfa = ExtendedDFA(
-        states={'1', '2', '3', '4'}, input_symbols={'a', 'b'},
+        states={'1', '2', '3', '4'},
+        input_symbols={'a', 'b'},
         transitions={
-            '1': {'a': '2', 'b': '1'}, '2': {'a': '2', 'b': '4'},
-            '3': {'a': '3', 'b': '1'}, '4': {'a': '3', 'b': '4'},
+            '1': {'a': '2', 'b': '1'},
+            '2': {'a': '2', 'b': '4'},
+            '3': {'a': '3', 'b': '1'},
+            '4': {'a': '3', 'b': '4'},
         },
-        initial_state='1', final_states={'1', '4'},
+        initial_state='1',
+        final_states={'1', '4'},
     )
     classic = dfa.minimize()
     hopcroft = dfa.minimize_hopcroft()
@@ -373,9 +412,12 @@ def test_distinguishable_states_handles_missing_transitions():
     # q0 n'a pas de transition 'a' (puits implicite), q1 en a une vers un
     # état final : le mot 'a' les distingue (q0 le rejette, q1 l'accepte)
     partial = ExtendedDFA(
-        states={'q0', 'q1'}, input_symbols={'a', 'b'},
+        states={'q0', 'q1'},
+        input_symbols={'a', 'b'},
         transitions={'q0': {'b': 'q1'}, 'q1': {'a': 'q0', 'b': 'q0'}},
-        initial_state='q0', final_states={'q0', 'q1'}, allow_partial=True,
+        initial_state='q0',
+        final_states={'q0', 'q1'},
+        allow_partial=True,
     )
     assert frozenset({'q0', 'q1'}) in partial.distinguishable_states()
 
@@ -384,13 +426,15 @@ def test_minimize_does_not_merge_states_distinguished_by_dead_end():
     # Contre-exemple trouvé par hypothesis : q0 --a--> puits, alors que
     # q1 --a--> q0 (final). Le mot 'a' distingue q0 de q1.
     dfa = ExtendedDFA(
-        states={'q0', 'q1', 'q2'}, input_symbols={'a', 'b'},
+        states={'q0', 'q1', 'q2'},
+        input_symbols={'a', 'b'},
         transitions={
             'q0': {'a': 'q2', 'b': 'q1'},
             'q1': {'a': 'q0', 'b': 'q0'},
             'q2': {'a': 'q2', 'b': 'q2'},
         },
-        initial_state='q0', final_states={'q0', 'q1'},
+        initial_state='q0',
+        final_states={'q0', 'q1'},
     )
     minimized = dfa.minimize()
     for word in ['', 'a', 'b', 'ba', 'bb', 'bab', 'abb']:
@@ -400,10 +444,14 @@ def test_minimize_does_not_merge_states_distinguished_by_dead_end():
 def test_cartesian_product_rejects_different_alphabets():
     dfa1 = make_simple_dfa()
     dfa2 = ExtendedDFA(
-        states={'1'}, input_symbols={'x'},
-        transitions={'1': {'x': '1'}}, initial_state='1', final_states={'1'},
+        states={'1'},
+        input_symbols={'x'},
+        transitions={'1': {'x': '1'}},
+        initial_state='1',
+        final_states={'1'},
     )
     import pytest
+
     with pytest.raises(ValueError):
         dfa1.cartesian_product(dfa2)
 
@@ -411,22 +459,27 @@ def test_cartesian_product_rejects_different_alphabets():
 def test_is_isomorphic_false_for_different_alphabets():
     dfa1 = make_simple_dfa()
     dfa2 = ExtendedDFA(
-        states={'1', '2', '3'}, input_symbols={'x', 'y'},
+        states={'1', '2', '3'},
+        input_symbols={'x', 'y'},
         transitions={
             '1': {'x': '2', 'y': '3'},
             '2': {'x': '2', 'y': '3'},
             '3': {'x': '3', 'y': '3'},
         },
-        initial_state='1', final_states={'2'},
+        initial_state='1',
+        final_states={'2'},
     )
     assert dfa1.is_isomorphic(dfa2) is False
 
 
 def test_is_minimal_false_on_inaccessible_state():
     dfa = ExtendedDFA(
-        states={'1', '2', '3'}, input_symbols={'a'},
+        states={'1', '2', '3'},
+        input_symbols={'a'},
         transitions={'1': {'a': '1'}, '2': {'a': '2'}, '3': {'a': '3'}},
-        initial_state='1', final_states={'1'}, allow_partial=True,
+        initial_state='1',
+        final_states={'1'},
+        allow_partial=True,
     )
     # '2' et '3' sont inaccessibles depuis '1'
     assert dfa.is_minimal() is False
@@ -434,9 +487,15 @@ def test_is_minimal_false_on_inaccessible_state():
 
 def test_complete_handles_sink_name_collision():
     partial = ExtendedDFA(
-        states={'1', '__sink__'}, input_symbols={'a', 'b'},
-        transitions={'1': {'a': '__sink__'}, '__sink__': {'a': '__sink__', 'b': '__sink__'}},
-        initial_state='1', final_states={'__sink__'}, allow_partial=True,
+        states={'1', '__sink__'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '1': {'a': '__sink__'},
+            '__sink__': {'a': '__sink__', 'b': '__sink__'},
+        },
+        initial_state='1',
+        final_states={'__sink__'},
+        allow_partial=True,
     )
     completed = partial.complete()
     assert completed.is_complete() is True
@@ -445,9 +504,15 @@ def test_complete_handles_sink_name_collision():
 
 def test_left_quotient_word_handles_name_collision():
     nfa = ExtendedNFA(
-        states={'1', '2', '__quotient_initial__'}, input_symbols={'a'},
-        transitions={'1': {'a': {'2'}}, '2': {'a': {'__quotient_initial__'}}, '__quotient_initial__': {}},
-        initial_state='1', final_states={'__quotient_initial__'},
+        states={'1', '2', '__quotient_initial__'},
+        input_symbols={'a'},
+        transitions={
+            '1': {'a': {'2'}},
+            '2': {'a': {'__quotient_initial__'}},
+            '__quotient_initial__': {},
+        },
+        initial_state='1',
+        final_states={'__quotient_initial__'},
     )
     quotient = nfa.left_quotient_word('a')
     assert quotient.accepts_input('a') is True
@@ -456,9 +521,12 @@ def test_left_quotient_word_handles_name_collision():
 def test_cartesian_product_handles_partial_automaton():
     complete_dfa = make_simple_dfa()
     partial_dfa = ExtendedDFA(
-        states={'x', 'y'}, input_symbols={'a', 'b'},
+        states={'x', 'y'},
+        input_symbols={'a', 'b'},
         transitions={'x': {'a': 'y'}, 'y': {'a': 'y', 'b': 'y'}},
-        initial_state='x', final_states={'y'}, allow_partial=True,
+        initial_state='x',
+        final_states={'y'},
+        allow_partial=True,
     )
     product = complete_dfa.cartesian_product(partial_dfa)
     assert product is not None
@@ -466,13 +534,17 @@ def test_cartesian_product_handles_partial_automaton():
 
 def test_is_isomorphic_false_when_branching_factor_differs():
     nfa1 = ExtendedNFA(
-        states={'1', '2'}, input_symbols={'a'},
+        states={'1', '2'},
+        input_symbols={'a'},
         transitions={'1': {'a': {'1', '2'}}, '2': {}},
-        initial_state='1', final_states={'2'},
+        initial_state='1',
+        final_states={'2'},
     )
     nfa2 = ExtendedNFA(
-        states={'1', '2'}, input_symbols={'a'},
+        states={'1', '2'},
+        input_symbols={'a'},
         transitions={'1': {'a': {'2'}}, '2': {}},
-        initial_state='1', final_states={'2'},
+        initial_state='1',
+        final_states={'2'},
     )
     assert nfa1.is_isomorphic(nfa2) is False

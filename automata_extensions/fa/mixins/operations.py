@@ -2,7 +2,7 @@
 
 
 class OperationsMixin:
-    """Regroupe les relations entre automates et les opérations sur les langages."""
+    """Relations entre automates et opérations sur les langages."""
 
     def is_complete(self):
         """Teste si l'automate est complet (DFA uniquement) : chaque état a
@@ -36,7 +36,8 @@ class OperationsMixin:
                 states=set(self.states),
                 input_symbols=set(self.input_symbols),
                 transitions={
-                    state: dict(paths) for state, paths in self.transitions.items()
+                    state: dict(paths)
+                    for state, paths in self.transitions.items()
                 },
                 initial_state=self.initial_state,
                 final_states=set(self.final_states),
@@ -48,7 +49,8 @@ class OperationsMixin:
 
         new_states = set(self.states) | {sink}
         new_transitions = {
-            state: dict(self.transitions.get(state, {})) for state in new_states
+            state: dict(self.transitions.get(state, {}))
+            for state in new_states
         }
         for state in new_states:
             for symbol in self.input_symbols:
@@ -104,12 +106,15 @@ class OperationsMixin:
         O(|Q1| . |Q2|) dans le pire cas.
         """
         if set(self.input_symbols) != set(other.input_symbols):
-            raise ValueError("Les deux automates doivent partager le même alphabet.")
+            raise ValueError(
+                "Les deux automates doivent partager le même alphabet."
+            )
+
+        def both_final(s1, s2):
+            return s1 in self.final_states and s2 in other.final_states
 
         if final_predicate is None:
-            final_predicate = lambda s1, s2: (
-                s1 in self.final_states and s2 in other.final_states
-            )
+            final_predicate = both_final
 
         initial_pair = (self.initial_state, other.initial_state)
         new_states = {initial_pair}
@@ -140,13 +145,16 @@ class OperationsMixin:
             input_symbols=set(self.input_symbols),
             transitions={
                 state_names[pair]: {
-                    symbol: state_names[target] for symbol, target in trans.items()
+                    symbol: state_names[target]
+                    for symbol, target in trans.items()
                 }
                 for pair, trans in new_transitions.items()
             },
             initial_state=state_names[initial_pair],
             final_states={
-                state_names[pair] for pair in new_states if final_predicate(*pair)
+                state_names[pair]
+                for pair in new_states
+                if final_predicate(*pair)
             },
             allow_partial=True,
         )
@@ -302,6 +310,7 @@ class OperationsMixin:
             final_states=set(good_states),  # tous les états gardés sont finaux
             allow_partial=True,
         )
+
     def distinguishable_states(self):
         """Calcule l'ensemble des paires d'états distinguables (algorithme
         classique de remplissage de table).
@@ -340,7 +349,7 @@ class OperationsMixin:
 
         # initialisation : un final et un non-final sont distinguables
         for i, p in enumerate(states):
-            for q in states[i + 1:]:
+            for q in states[i + 1 :]:
                 if is_final(p) != is_final(q):
                     distinguishable.add(frozenset({p, q}))
 
@@ -349,14 +358,18 @@ class OperationsMixin:
         while changed:
             changed = False
             for i, p in enumerate(states):
-                for q in states[i + 1:]:
+                for q in states[i + 1 :]:
                     pair = frozenset({p, q})
                     if pair in distinguishable:
                         continue
                     for symbol in self.input_symbols:
                         pt = successor(p, symbol)
                         qt = successor(q, symbol)
-                        if pt is not qt and pt != qt and frozenset({pt, qt}) in distinguishable:
+                        if (
+                            pt is not qt
+                            and pt != qt
+                            and frozenset({pt, qt}) in distinguishable
+                        ):
                             distinguishable.add(pair)
                             changed = True
                             break
@@ -444,7 +457,9 @@ class OperationsMixin:
                 targets = trimmed._successors(state, symbol)
                 if targets:
                     target = next(iter(targets))
-                    new_transitions[class_name[state]][symbol] = class_name[target]
+                    new_transitions[class_name[state]][symbol] = class_name[
+                        target
+                    ]
 
         return type(trimmed)(
             states=new_states,
@@ -471,6 +486,7 @@ class OperationsMixin:
                 if isinstance(target, (set, frozenset)) and len(target) > 1:
                     return False
         return True
+
     def union(self, other):
         """Union des deux langages reconnus.
 
@@ -567,7 +583,6 @@ class OperationsMixin:
         O(|w| . |Q|)
         """
         from automata.fa.dfa import DFA
-        from automata.fa.nfa import NFA
 
         if isinstance(self, DFA):
             current = self.initial_state
@@ -579,7 +594,9 @@ class OperationsMixin:
                     return type(self)(
                         states={trap},
                         input_symbols=set(self.input_symbols),
-                        transitions={trap: {s: trap for s in self.input_symbols}},
+                        transitions={
+                            trap: {s: trap for s in self.input_symbols}
+                        },
                         initial_state=trap,
                         final_states=set(),
                         allow_partial=True,
@@ -608,9 +625,12 @@ class OperationsMixin:
 
         new_states = set(self.states) | {new_initial}
         new_transitions = {s: dict(p) for s, p in self.transitions.items()}
-        new_transitions[new_initial] = {"": set(current_set)} if current_set else {}
+        new_transitions[new_initial] = (
+            {"": set(current_set)} if current_set else {}
+        )
 
         from ..nfa import ExtendedNFA
+
         return ExtendedNFA(
             states=new_states,
             input_symbols=set(self.input_symbols),
@@ -730,7 +750,9 @@ class OperationsMixin:
         non_finals = states - finals
 
         # prédécesseurs inversés : (état, symbole) -> ensemble d'états sources
-        preimage = {(s, sym): set() for s in states for sym in trimmed.input_symbols}
+        preimage = {
+            (s, sym): set() for s in states for sym in trimmed.input_symbols
+        }
         for s in states:
             for sym in trimmed.input_symbols:
                 for target in trimmed._successors(s, sym):
@@ -763,7 +785,11 @@ class OperationsMixin:
                     continue  # le bloc entier est affecté, pas de scission
 
                 # scission : le plus petit morceau devient un nouveau bloc
-                smaller, larger = (in_block, out_block) if len(in_block) <= len(out_block) else (out_block, in_block)
+                smaller, larger = (
+                    (in_block, out_block)
+                    if len(in_block) <= len(out_block)
+                    else (out_block, in_block)
+                )
 
                 partition[bid] = larger
                 new_id = len(partition)
@@ -795,7 +821,9 @@ class OperationsMixin:
             for sym in trimmed.input_symbols:
                 successors = trimmed._successors(representative, sym)
                 if successors:
-                    new_transitions[name][sym] = rep_name[next(iter(successors))]
+                    new_transitions[name][sym] = rep_name[
+                        next(iter(successors))
+                    ]
             if representative in trimmed.final_states:
                 new_final_states.add(name)
 

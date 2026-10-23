@@ -1,4 +1,4 @@
-"""Algorithmes d'analyse structurelle : parcours, accessibilité, coaccessibilité, cycles, SCC..."""
+"""Analyse structurelle : parcours, accessibilité, cycles, SCC..."""
 
 from collections import deque
 
@@ -35,7 +35,7 @@ class AnalyseMixin:
             if state not in visited:
                 visited.add(state)
                 order.append(state)
-                for symbol in self.transitions.get(state,{}):
+                for symbol in self.transitions.get(state, {}):
                     for next_state in self._successors(state, symbol):
                         if next_state not in visited:
                             stack.append(next_state)
@@ -69,7 +69,7 @@ class AnalyseMixin:
         while queue:
             state = queue.popleft()
             order.append(state)
-            for symbol in self.transitions.get(state,{}):
+            for symbol in self.transitions.get(state, {}):
                 for next_state in self._successors(state, symbol):
                     if next_state not in visited:
                         visited.add(next_state)
@@ -78,7 +78,7 @@ class AnalyseMixin:
         return order
 
     def predecessor_states(self, state):
-        """Calcule les prédécesseurs d'un état (parcours inverse des transitions).
+        """Calcule les prédécesseurs d'un état (transitions inversées).
 
         Parameters
         ----------
@@ -125,7 +125,7 @@ class AnalyseMixin:
         return state in self.accessible_states()
 
     def reachable_states_from(self, state):
-        """Calcule les états atteignables depuis un état donné (pas forcément l'initial).
+        """Calcule les états atteignables depuis un état donné.
 
         Parameters
         ----------
@@ -206,7 +206,7 @@ class AnalyseMixin:
 
         Returns
         -------
-        Un nouvel automate du même type que self (DFA reste DFA, NFA reste NFA).
+        Un nouvel automate du même type que self (DFA ou NFA).
 
         Complexity
         ----------
@@ -249,7 +249,6 @@ class AnalyseMixin:
 
         return type(self)(**kwargs)
 
-
     def trim(self):
         """Renvoie un nouvel automate émondé (restreint aux états utiles).
 
@@ -270,6 +269,7 @@ class AnalyseMixin:
         useful = self.useful_states()
         if not useful:
             from automata.fa.dfa import DFA
+
             trap = "__empty_language__"
             kwargs = dict(
                 states={trap},
@@ -282,7 +282,6 @@ class AnalyseMixin:
                 kwargs["allow_partial"] = True
             return type(self)(**kwargs)
         return self.induced_subautomaton(useful)
-
 
     def is_trim(self):
         """Teste si l'automate est déjà émondé (tous les états sont utiles).
@@ -314,8 +313,8 @@ class AnalyseMixin:
         Tarjan, R. E. (1972). Depth-first search and linear graph algorithms.
         """
         index_counter = [0]
-        index = {}       # état -> ordre de découverte
-        lowlink = {}     # état -> plus petit index atteignable
+        index = {}  # état -> ordre de découverte
+        lowlink = {}  # état -> plus petit index atteignable
         on_stack = set()
         stack = []
         sccs = []
@@ -331,7 +330,9 @@ class AnalyseMixin:
                 for successor in self._successors(state, symbol):
                     if successor not in index:
                         strongconnect(successor)
-                        lowlink[state] = min(lowlink[state], lowlink[successor])
+                        lowlink[state] = min(
+                            lowlink[state], lowlink[successor]
+                        )
                     elif successor in on_stack:
                         lowlink[state] = min(lowlink[state], index[successor])
 
@@ -351,7 +352,6 @@ class AnalyseMixin:
                 strongconnect(state)
 
         return sccs
-
 
     def has_cycle(self):
         """Détecte l'existence d'un cycle dans l'automate.
@@ -415,7 +415,9 @@ class AnalyseMixin:
         # useful non vide implique nécessairement que l'état initial en
         # fait partie : tout état utile est atteignable depuis l'état
         # initial, qui peut donc lui aussi atteindre le même final.
-        sub = self.induced_subautomaton(useful, initial_state=self.initial_state)
+        sub = self.induced_subautomaton(
+            useful, initial_state=self.initial_state
+        )
         return sub.has_cycle()
 
     def accepts_word(self, word):
@@ -471,6 +473,8 @@ class AnalyseMixin:
                 next_set = set()
                 for state in current_set:
                     next_set |= self._successors(state, symbol)
-                current_set = self.epsilon_closure(next_set) if next_set else set()
+                current_set = (
+                    self.epsilon_closure(next_set) if next_set else set()
+                )
                 trace.append(current_set)
             return trace

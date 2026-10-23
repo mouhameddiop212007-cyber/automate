@@ -1,4 +1,4 @@
-from tests.conftest import make_simple_dfa, make_epsilon_nfa
+from tests.conftest import make_simple_dfa
 
 
 def test_export_dot_returns_nonempty_string():
@@ -28,5 +28,6 @@ def test_export_pdf_creates_file(tmp_path):
 def test_export_tikz_raises_not_implemented():
     dfa = make_simple_dfa()
     import pytest
+
     with pytest.raises(NotImplementedError):
         dfa.export_tikz()

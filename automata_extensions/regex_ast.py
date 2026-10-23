@@ -9,6 +9,7 @@ parenthésage. Pas de classes de caractères ni d'échappement.
 
 class RegexNode:
     """Classe de base des nœuds de l'AST."""
+
     pass
 
 
@@ -124,6 +125,7 @@ class Star(RegexNode):
 # construction, pour que des expressions équivalentes produisent le même
 # nœud (essentiel pour que brzozowski_automaton termine avec peu d'états).
 
+
 def mk_union(nodes):
     flat = []
     for n in nodes:
@@ -167,6 +169,7 @@ def mk_star(node):
 
 # --- Analyse syntaxique ---
 
+
 def parse_regex(text):
     """Analyse une expression régulière en AST.
 
@@ -208,7 +211,9 @@ def parse_regex(text):
             advance()
             node = parse_union()
             if peek() != ")":
-                raise ValueError(f"parenthèse fermante manquante dans {text!r}")
+                raise ValueError(
+                    f"parenthèse fermante manquante dans {text!r}"
+                )
             advance()
             return node
         if c is not None and c.isalnum():
@@ -265,6 +270,7 @@ def derivative(node, symbol):
         return mk_concat([derivative(node.inner, symbol), node])
     raise TypeError(f"nœud inconnu : {node!r}")
 
+
 def arden_lemma(coef_regex, const_regex):
     """Résout une équation rationnelle unique X = coef_regex . X + const_regex
     (avec coef_regex ne contenant pas le mot vide), via le lemme d'Arden :
@@ -319,7 +325,9 @@ def solve_equation_system(equations, start_variable):
         # None = pas de terme constant (état non-acceptant, langage ∅).
         # '' = mot vide accepté (état acceptant via ε) : parse_regex('')
         # renvoie justement Epsilon() par construction de la grammaire.
-        const[var] = parse_regex(raw_const) if raw_const is not None else Empty()
+        const[var] = (
+            parse_regex(raw_const) if raw_const is not None else Empty()
+        )
 
     remaining = set(variables)
     to_eliminate = [v for v in variables if v != start_variable]

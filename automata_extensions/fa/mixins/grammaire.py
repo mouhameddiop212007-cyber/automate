@@ -1,4 +1,4 @@
-"""Grammaires, arbres de dérivation, équations rationnelles, monoïde syntaxique."""
+"""Grammaires, arbres de dérivation, équations, monoïde syntaxique."""
 
 
 class GrammaireMixin:
@@ -70,7 +70,9 @@ class GrammaireMixin:
                     final_states.add(var)
                 elif len(prod) == 1:
                     symbol = prod[0]
-                    transitions[var].setdefault(symbol, set()).add(accept_state)
+                    transitions[var].setdefault(symbol, set()).add(
+                        accept_state
+                    )
                 else:
                     symbol, target = prod
                     transitions[var].setdefault(symbol, set()).add(target)
@@ -108,7 +110,9 @@ class GrammaireMixin:
         from ...grammar.parse_tree import Node, Leaf
 
         if not self.accepts_input(word):
-            raise ValueError(f"le mot {word!r} n'est pas reconnu par l'automate")
+            raise ValueError(
+                f"le mot {word!r} n'est pas reconnu par l'automate"
+            )
 
         current = self.initial_state
         nodes = []

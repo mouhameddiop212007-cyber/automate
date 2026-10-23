@@ -1,8 +1,10 @@
-"""Conversions regex <-> automates (Brzozowski, Thompson, sous-ensembles, élimination d'états)."""
+"""Conversions regex <-> automates (Brzozowski, Thompson, etc.)."""
+
 from ...regex_ast import parse_regex, derivative, is_nullable, to_string
 
+
 class ConversionsMixin:
-    """Regroupe les conversions entre représentations (regex, automates, etc.)."""
+    """Regroupe les conversions entre représentations (regex, automates)."""
 
     def reverse(self):
         """Renvoie l'automate renversé : transitions inversées, échange
@@ -20,12 +22,11 @@ class ConversionsMixin:
         """
         from automata.fa.nfa import NFA
 
-        if isinstance(self,NFA):
-          native_result = super().reverse()
-          return self._wrap_native_result(native_result)
+        if isinstance(self, NFA):
+            native_result = super().reverse()
+            return self._wrap_native_result(native_result)
 
         from ..nfa import ExtendedNFA  # import différé pour éviter un cycle
-        
 
         new_initial = "__reverse_initial__"
         while new_initial in self.states:
@@ -37,7 +38,9 @@ class ConversionsMixin:
         for state in self.states:
             for symbol in self.input_symbols:
                 for target in self._successors(state, symbol):
-                    new_transitions[target].setdefault(symbol, set()).add(state)
+                    new_transitions[target].setdefault(symbol, set()).add(
+                        state
+                    )
 
         # epsilon ('') du nouvel état initial vers les anciens finaux
         new_transitions[new_initial][""] = set(self.final_states)
@@ -87,7 +90,7 @@ class ConversionsMixin:
         return closure
 
     def determinize(self):
-        """Convertit un NFA en DFA équivalent (construction des sous-ensembles).
+        """Convertit un NFA en DFA équivalent (sous-ensembles).
 
         Ne visite que les sous-ensembles d'états réellement accessibles
         (construction "paresseuse"), plutôt que de générer par avance les
@@ -120,7 +123,11 @@ class ConversionsMixin:
                 next_set = set()
                 for state in current:
                     next_set |= self._successors(state, symbol)
-                next_closure = frozenset(self.epsilon_closure(next_set)) if next_set else frozenset()
+                next_closure = (
+                    frozenset(self.epsilon_closure(next_set))
+                    if next_set
+                    else frozenset()
+                )
 
                 new_transitions[current][symbol] = next_closure
                 if next_closure not in new_states:
@@ -135,12 +142,13 @@ class ConversionsMixin:
             }
 
         new_final_states = {
-            state for state in new_states
-            if state & set(self.final_states)
+            state for state in new_states if state & set(self.final_states)
         }
 
         # renommage des frozenset en identifiants lisibles (str)
-        state_names = {state: str(set(state)) if state else "∅" for state in new_states}
+        state_names = {
+            state: str(set(state)) if state else "∅" for state in new_states
+        }
 
         return ExtendedDFA(
             states=set(state_names.values()),
@@ -233,9 +241,17 @@ class ConversionsMixin:
                     for symbol, targets in transitions.get(q, {}).items():
                         if symbol == "":
                             continue
-                        targets = targets if isinstance(targets, (set, frozenset)) else {targets}
+                        targets = (
+                            targets
+                            if isinstance(targets, (set, frozenset))
+                            else {targets}
+                        )
                         existing = transitions[p].get(symbol, set())
-                        existing = existing if isinstance(existing, (set, frozenset)) else {existing}
+                        existing = (
+                            existing
+                            if isinstance(existing, (set, frozenset))
+                            else {existing}
+                        )
                         transitions[p][symbol] = existing | targets
 
                     if q in final_states:
@@ -250,13 +266,14 @@ class ConversionsMixin:
                     progress = True
 
         from ..nfa import ExtendedNFA
+
         return ExtendedNFA(
             states=states,
             input_symbols=set(self.input_symbols),
             transitions=transitions,
             initial_state=self.initial_state,
             final_states=final_states,
-        )     
+        )
 
     @classmethod
     def regex_to_nfa(cls, regex, input_symbols):
@@ -281,7 +298,9 @@ class ConversionsMixin:
         return ExtendedNFA(
             states=set(native_result.states),
             input_symbols=set(native_result.input_symbols),
-            transitions={s: dict(p) for s, p in native_result.transitions.items()},
+            transitions={
+                s: dict(p) for s, p in native_result.transitions.items()
+            },
             initial_state=native_result.initial_state,
             final_states=set(native_result.final_states),
         )
@@ -309,7 +328,6 @@ class ConversionsMixin:
         dfa = self if isinstance(self, DFA) else self.determinize()
         gnfa = GNFA.from_dfa(dfa)
         return gnfa.to_regex()
-
 
     @staticmethod
     def brzozowski_derivative(regex, symbol):
@@ -415,9 +433,15 @@ class ConversionsMixin:
             coef = {}
             for symbol in dfa.input_symbols:
                 for target in dfa._successors(state, symbol):
-                    coef[target] = coef.get(target, "") 
-                    coef[target] = symbol if not coef[target] else f"({coef[target]}|{symbol})"
+                    coef[target] = coef.get(target, "")
+                    coef[target] = (
+                        symbol
+                        if not coef[target]
+                        else f"({coef[target]}|{symbol})"
+                    )
             const = "" if state in dfa.final_states else None
             equations[state] = (coef, const)
 
-        return solve_equation_system(equations, start_variable=dfa.initial_state)
+        return solve_equation_system(
+            equations, start_variable=dfa.initial_state
+        )

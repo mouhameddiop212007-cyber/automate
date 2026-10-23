@@ -39,8 +39,8 @@ def test_predecessors_simple():
 def test_predecessors_of_initial_state_via_self_loop():
     dfa = make_simple_dfa()
     # état '3' est atteint depuis '1' (via 'b') et depuis 2 (via  'b')
-    #et depuis lui même (via 'a' et 'b')
-    assert dfa.predecessor_states('3') == {'1','2', '3'}
+    # et depuis lui même (via 'a' et 'b')
+    assert dfa.predecessor_states('3') == {'1', '2', '3'}
 
 
 def test_accessible_states():
@@ -61,7 +61,7 @@ def test_reachable_states_from():
 
 def test_coaccessible_states():
     dfa = make_simple_dfa()
-    # depuis '1' : peut atteindre '2' (final) via 'a'. Depuis '2' : est déjà final.
+    # depuis '1' : atteint '2' (final) via 'a'. Depuis '2' : déjà final.
     # depuis '3' : boucle sur lui-même, jamais final -> pas coaccessible.
     assert dfa.coaccessible_states() == {'1', '2'}
 
@@ -82,15 +82,18 @@ def test_induced_subautomaton_keeps_only_given_states():
     dfa = make_simple_dfa()
     sub = dfa.induced_subautomaton({'1', '2'})
     assert sub.states == {'1', '2'}
-    # la transition '1' --b--> '3' doit avoir disparu (3 n'est plus dans le sous-ensemble)
+    # la transition '1' --b--> '3' disparaît (3 hors du sous-ensemble)
     assert 'b' not in sub.transitions['1']
 
 
 def test_induced_subautomaton_rejects_missing_initial_state():
     dfa = make_simple_dfa()
     import pytest
+
     with pytest.raises(ValueError):
-        dfa.induced_subautomaton({'2', '3'})  # ne contient pas l'état initial '1'
+        dfa.induced_subautomaton(
+            {'2', '3'}
+        )  # ne contient pas l'état initial '1'
 
 
 def test_trim_removes_non_useful_states():
@@ -226,13 +229,15 @@ def test_execution_trace_on_dfa_rejected_word():
         final_states={'2'},
         allow_partial=True,
     )
-    trace = partial_dfa.execution_trace('b')  # pas de transition 'b' depuis '1'
+    trace = partial_dfa.execution_trace(
+        'b'
+    )  # pas de transition 'b' depuis '1'
     assert trace == ['1', None]
 
 
 def test_execution_trace_on_nfa_applies_epsilon_closure_at_start():
     nfa = make_epsilon_nfa()
-    # avant même de lire un symbole, la fermeture epsilon de '1' inclut '2' et '3'
+    # sans lire de symbole, la fermeture epsilon de '1' inclut '2' et '3'
     trace = nfa.execution_trace('')
     assert trace == [{'1', '2', '3'}]
 
@@ -247,9 +252,11 @@ def test_execution_trace_on_nfa_applies_epsilon_closure_after_symbol():
 
 def test_induced_subautomaton_preserves_nfa_multi_target_transitions():
     nfa = ExtendedNFA(
-        states={'1', '2', '3'}, input_symbols={'a'},
+        states={'1', '2', '3'},
+        input_symbols={'a'},
         transitions={'1': {'a': {'2', '3'}}, '2': {}, '3': {}},
-        initial_state='1', final_states={'2', '3'},
+        initial_state='1',
+        final_states={'2', '3'},
     )
     sub = nfa.induced_subautomaton({'1', '2', '3'})
     assert sub.transitions['1']['a'] == {'2', '3'}
@@ -257,8 +264,10 @@ def test_induced_subautomaton_preserves_nfa_multi_target_transitions():
 
 def test_has_cycle_true_on_multi_state_cycle():
     dfa = ExtendedDFA(
-        states={'1', '2', '3'}, input_symbols={'a'},
+        states={'1', '2', '3'},
+        input_symbols={'a'},
         transitions={'1': {'a': '2'}, '2': {'a': '3'}, '3': {'a': '1'}},
-        initial_state='1', final_states={'1'},
+        initial_state='1',
+        final_states={'1'},
     )
     assert dfa.has_cycle() is True

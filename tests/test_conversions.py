@@ -43,6 +43,7 @@ def test_epsilon_closure_trivial_on_dfa():
 
 def test_determinize_produces_dfa():
     from automata.fa.dfa import DFA
+
     nfa = make_epsilon_nfa()
     dfa = nfa.determinize()
     assert isinstance(dfa, DFA)
@@ -145,9 +146,14 @@ def test_difference_determinizes_nfa_input():
 
 def test_reverse_handles_name_collision():
     dfa = ExtendedDFA(
-        states={'1', '__reverse_initial__'}, input_symbols={'a'},
-        transitions={'1': {'a': '__reverse_initial__'}, '__reverse_initial__': {'a': '__reverse_initial__'}},
-        initial_state='1', final_states={'__reverse_initial__'},
+        states={'1', '__reverse_initial__'},
+        input_symbols={'a'},
+        transitions={
+            '1': {'a': '__reverse_initial__'},
+            '__reverse_initial__': {'a': '__reverse_initial__'},
+        },
+        initial_state='1',
+        final_states={'__reverse_initial__'},
     )
     reversed_dfa = dfa.reverse()
     assert reversed_dfa.accepts_input('a') is True
@@ -155,14 +161,16 @@ def test_reverse_handles_name_collision():
 
 def test_eliminate_epsilon_states_normalized_copies_real_transitions():
     nfa = ExtendedNFA(
-        states={'1', '2', '3', '4'}, input_symbols={'a'},
+        states={'1', '2', '3', '4'},
+        input_symbols={'a'},
         transitions={
             '1': {'': {'2', '3'}},
             '2': {'a': {'4'}},
             '3': {'': {'4'}},
             '4': {},
         },
-        initial_state='1', final_states={'4'},
+        initial_state='1',
+        final_states={'4'},
     )
     result = nfa.eliminate_epsilon_states_normalized()
     for word in ['', 'a']:

@@ -1,7 +1,7 @@
 from automata_extensions.fa.nfa import ExtendedNFA
 from automata_extensions.fa.dfa import ExtendedDFA
 from automata_extensions.regex_ast import arden_lemma
-from tests.conftest import make_simple_dfa, make_epsilon_nfa
+from tests.conftest import make_simple_dfa
 
 
 def test_regex_to_nfa_accepts_matching_words():
@@ -18,7 +18,9 @@ def test_to_regex_state_elimination_roundtrip():
     assert len(regex) > 0
     # vérifie la cohérence : reconstruire un NFA depuis la regex obtenue
     # doit reconnaître le même langage que dfa
-    reconstructed = ExtendedNFA.regex_to_nfa(regex, input_symbols=dfa.input_symbols)
+    reconstructed = ExtendedNFA.regex_to_nfa(
+        regex, input_symbols=dfa.input_symbols
+    )
     for word in ['', 'a', 'b', 'aa', 'ab', 'ba', 'bb']:
         assert dfa.accepts_input(word) == reconstructed.accepts_input(word)
 
@@ -55,23 +57,35 @@ def test_to_regex_arden_roundtrip():
     regex = dfa.to_regex_arden()
     assert isinstance(regex, str)
     assert len(regex) > 0
-    reconstructed = ExtendedNFA.regex_to_nfa(regex, input_symbols=dfa.input_symbols)
+    reconstructed = ExtendedNFA.regex_to_nfa(
+        regex, input_symbols=dfa.input_symbols
+    )
     for word in ['', 'a', 'b', 'aa', 'ab', 'ba', 'bb']:
         assert dfa.accepts_input(word) == reconstructed.accepts_input(word)
 
 
 def test_to_regex_arden_agrees_with_state_elimination():
     dfa = ExtendedDFA(
-        states={'1', '2', '3'}, input_symbols={'a', 'b'},
-        transitions={'1': {'a': '2', 'b': '1'}, '2': {'a': '2', 'b': '3'}, '3': {'a': '3', 'b': '3'}},
-        initial_state='1', final_states={'3'},
+        states={'1', '2', '3'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '1': {'a': '2', 'b': '1'},
+            '2': {'a': '2', 'b': '3'},
+            '3': {'a': '3', 'b': '3'},
+        },
+        initial_state='1',
+        final_states={'3'},
     )
     arden_regex = dfa.to_regex_arden()
     elimination_regex = dfa.to_regex_state_elimination()
     # les deux méthodes doivent reconnaître le même langage (pas forcément
     # la même expression textuelle)
-    arden_nfa = ExtendedNFA.regex_to_nfa(arden_regex, input_symbols=dfa.input_symbols)
-    elim_nfa = ExtendedNFA.regex_to_nfa(elimination_regex, input_symbols=dfa.input_symbols)
+    arden_nfa = ExtendedNFA.regex_to_nfa(
+        arden_regex, input_symbols=dfa.input_symbols
+    )
+    elim_nfa = ExtendedNFA.regex_to_nfa(
+        elimination_regex, input_symbols=dfa.input_symbols
+    )
     for word in ['', 'a', 'b', 'ab', 'ba', 'aab', 'abb', 'aaa']:
         assert arden_nfa.accepts_input(word) == elim_nfa.accepts_input(word)
 
@@ -84,6 +98,7 @@ def test_arden_lemma_simple():
 
 def test_solve_equation_system_two_variables():
     from automata_extensions.regex_ast import solve_equation_system
+
     # X = aY (X non-acceptant : pas de mot vide) ; Y = bX + ε (Y acceptant)
     # Langage attendu : a(ba)*
     equations = {

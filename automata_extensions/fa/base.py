@@ -19,7 +19,7 @@ class ExtendedFA(
     avec une classe de automata-lib, ex: class ExtendedDFA(ExtendedFA, DFA)."""
 
     def _successors(self, state, symbol):
-        """Renvoie l'ensemble des états atteints depuis `state` en lisant `symbol`.
+        """Renvoie les états atteints depuis `state` en lisant `symbol`.
 
         Uniformise DFA (transitions[state][symbol] = état unique) et
         NFA (transitions[state][symbol] = ensemble d'états), pour que les
@@ -65,5 +65,7 @@ class ExtendedFA(
             final_states=set(automaton.final_states),
         )
         if isinstance(automaton, DFA):
-            kwargs["allow_partial"] = getattr(automaton, "allow_partial", False)
+            kwargs["allow_partial"] = getattr(
+                automaton, "allow_partial", False
+            )
         return target_cls(**kwargs)

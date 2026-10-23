@@ -1,10 +1,20 @@
 """Grammaires, arbres de dérivation, équations, monoïde syntaxique."""
 
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
-class GrammaireMixin:
+from ...grammar.grammar import Production, RegularGrammar
+from ...grammar.parse_tree import Leaf, Node
+from ._host import FAHost
+
+if TYPE_CHECKING:
+    from ..base import ExtendedFA
+    from ..nfa import ExtendedNFA
+
+
+class GrammaireMixin(FAHost):
     """Regroupe les algorithmes liés aux grammaires régulières."""
 
-    def to_grammar(self):
+    def to_grammar(self) -> RegularGrammar:
         """Convertit l'automate en grammaire régulière équivalente.
 
         Construction directe (#55) : un non-terminal par état, une règle
@@ -19,9 +29,9 @@ class GrammaireMixin:
         ----------
         O(|Q| + |E|)
         """
-        from ...grammar.grammar import RegularGrammar
-
-        rules = {state: [] for state in self.states}
+        rules: Dict[Any, List[Production]] = {
+            state: [] for state in self.states
+        }
         for state in self.states:
             for symbol in self.transitions.get(state, {}):
                 for target in self._successors(state, symbol):
@@ -37,7 +47,9 @@ class GrammaireMixin:
         )
 
     @classmethod
-    def grammar_to_automaton(cls, grammar):
+    def grammar_to_automaton(
+        cls, grammar: RegularGrammar
+    ) -> "ExtendedNFA":
         """Convertit une grammaire régulière en automate équivalent (#55).
 
         Construction inverse de to_grammar : un état par non-terminal, une
@@ -54,14 +66,14 @@ class GrammaireMixin:
         -------
         ExtendedNFA
         """
-        from ..nfa import ExtendedNFA
+        from ..nfa import ExtendedNFA as _NFA
 
         accept_state = "__accept__"
         while accept_state in grammar.variables:
             accept_state += "_"
 
         states = set(grammar.variables) | {accept_state}
-        transitions = {s: {} for s in states}
+        transitions: Dict[Any, Dict[Any, Set[Any]]] = {s: {} for s in states}
         final_states = {accept_state}
 
         for var, prods in grammar.rules.items():
@@ -77,7 +89,7 @@ class GrammaireMixin:
                     symbol, target = prod
                     transitions[var].setdefault(symbol, set()).add(target)
 
-        return ExtendedNFA(
+        return _NFA(
             states=states,
             input_symbols=set(grammar.terminals),
             transitions=transitions,
@@ -85,7 +97,7 @@ class GrammaireMixin:
             final_states=final_states,
         )
 
-    def derivation_tree(self, word):
+    def derivation_tree(self, word: str) -> Node:
         """Construit l'arbre (chaîne) de dérivation d'un mot, via la
         grammaire régulière associée à l'automate (#56).
 
@@ -107,15 +119,13 @@ class GrammaireMixin:
         ValueError
             Si le mot n'est pas reconnu par l'automate.
         """
-        from ...grammar.parse_tree import Node, Leaf
-
         if not self.accepts_input(word):
             raise ValueError(
                 f"le mot {word!r} n'est pas reconnu par l'automate"
             )
 
         current = self.initial_state
-        nodes = []
+        nodes: List[Tuple[Any, Optional[str]]] = []
         for symbol in word:
             successors = self._successors(current, symbol)
             target = next(iter(successors))
@@ -123,15 +133,16 @@ class GrammaireMixin:
             current = target
         nodes.append((current, None))  # dernière étape : current est final
 
-        root = None
-        for variable, symbol in reversed(nodes):
-            if symbol is None:
+        root: Optional[Node] = None
+        for variable, last_symbol in reversed(nodes):
+            if last_symbol is None:
                 root = Node(variable)
             else:
-                root = Node(variable, leaf=Leaf(symbol), child=root)
+                root = Node(variable, leaf=Leaf(last_symbol), child=root)
+        assert root is not None
         return root
 
-    def myhill_nerode_language_classes(self):
+    def myhill_nerode_language_classes(self) -> Dict[str, Any]:
         """Calcule les classes de résiduels du langage (quotients à gauche
         distincts), #59 — à ne pas confondre avec myhill_nerode_partition
         (#30), qui classe les ÉTATS d'un automate donné.
@@ -170,7 +181,7 @@ class GrammaireMixin:
             for word in shortest_word.values()
         }
 
-    def residual_automaton(self):
+    def residual_automaton(self) -> "ExtendedFA":
         """Construit l'automate résiduel : un état par résiduel distinct
         du langage (mot représentatif le plus court), transitions données
         par la lecture d'un symbole supplémentaire (#60).
@@ -190,12 +201,12 @@ class GrammaireMixin:
 
         # associe chaque résiduel (par valeur d'automate) à son mot le
         # plus court, pour retrouver l'état cible de chaque transition
-        residual_to_word = {}
+        residual_to_word: Dict[str, str] = {}
         for word in words:
             residual_to_word[word] = word  # le mot EST déjà le nom canonique
 
-        transitions = {word: {} for word in words}
-        final_words = set()
+        transitions: Dict[str, Dict[Any, str]] = {w: {} for w in words}
+        final_words: Set[str] = set()
 
         for word in words:
             residual = classes[word]
@@ -209,7 +220,8 @@ class GrammaireMixin:
                         transitions[word][symbol] = other_word
                         break
 
-        return type(self)(
+        automaton_cls: Any = type(self)
+        return automaton_cls(
             states=set(words),
             input_symbols=set(self.input_symbols),
             transitions=transitions,
@@ -218,7 +230,9 @@ class GrammaireMixin:
             allow_partial=True,
         )
 
-    def automaton_morphism(self, other, mapping):
+    def automaton_morphism(
+        self, other: Any, mapping: Dict[Any, Any]
+    ) -> bool:
         """Vérifie si `mapping` est un morphisme d'automates valide de self
         vers other : une application entre les états qui préserve les
         transitions (#61).

@@ -20,14 +20,6 @@ class ExtendedFA(
     """Regroupe tous les algorithmes ajoutés. À combiner via héritage multiple
     avec une classe de automata-lib, ex: class ExtendedDFA(ExtendedFA, DFA)."""
 
-    # Attributs fournis par automata-lib (DFA/NFA) : simples annotations
-    # pour le typage statique, sans effet à l'exécution.
-    states: Any
-    input_symbols: Any
-    transitions: Any
-    initial_state: Any
-    final_states: Any
-
     def _successors(self, state: Any, symbol: str) -> Set[Any]:
         """Renvoie les états atteints depuis `state` en lisant `symbol`.
 

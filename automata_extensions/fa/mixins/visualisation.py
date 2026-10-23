@@ -1,10 +1,14 @@
 """Export DOT/SVG/PDF/TikZ des automates."""
 
+from typing import NoReturn, Optional
 
-class VisualisationMixin:
+from ._host import FAHost
+
+
+class VisualisationMixin(FAHost):
     """Regroupe les méthodes d'export visuel de l'automate."""
 
-    def export_dot(self):
+    def export_dot(self) -> str:
         """Renvoie le code source DOT (Graphviz) de l'automate, en texte.
 
         Réutilise show_diagram() natif de automata-lib (nécessite
@@ -17,7 +21,7 @@ class VisualisationMixin:
         """
         return str(self.show_diagram())
 
-    def export_svg(self, filename):
+    def export_svg(self, filename: str) -> str:
         """Exporte l'automate en image SVG via Graphviz (binaire dot requis).
 
         Parameters
@@ -28,7 +32,7 @@ class VisualisationMixin:
         self.show_diagram().draw(filename, format="svg", prog="dot")
         return filename
 
-    def export_pdf(self, filename):
+    def export_pdf(self, filename: str) -> str:
         """Exporte l'automate en PDF via Graphviz (binaire dot requis).
 
         Parameters
@@ -39,7 +43,7 @@ class VisualisationMixin:
         self.show_diagram().draw(filename, format="pdf", prog="dot")
         return filename
 
-    def export_tikz(self, filename=None):
+    def export_tikz(self, filename: Optional[str] = None) -> NoReturn:
         """Export TikZ (non supporté directement).
 
         Graphviz ne produit pas nativement de code TikZ/PGF ; cela

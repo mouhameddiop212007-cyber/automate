@@ -1,5 +1,7 @@
 # automata_extensions
 
+![CI](https://github.com/mouhameddiop212007-cyber/automate/actions/workflows/ci.yml/badge.svg)
+
 Extension pédagogique de la bibliothèque [`automata-lib`](https://pypi.org/project/automata-lib/) (version **9.2.0**, figée) :
 algorithmes classiques de théorie des langages sur les automates finis, les expressions régulières et les grammaires régulières.
 `automata-lib` n'est **jamais modifiée** : tout passe par héritage multiple et mixins.

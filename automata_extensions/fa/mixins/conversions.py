@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class ConversionsMixin(FAHost):
     """Regroupe les conversions entre représentations (regex, automates)."""
 
-    def reverse(self) -> "ExtendedFA":
+    def reverse(self) -> Any:
         """Renvoie l'automate renversé : transitions inversées, échange
         initial/finaux. Un nouvel état initial unique est créé, relié par
         epsilon aux anciens états finaux (le résultat est donc un NFA).
@@ -35,7 +35,7 @@ class ConversionsMixin(FAHost):
         from automata.fa.nfa import NFA
 
         if isinstance(self, NFA):
-            native_result = super().reverse()
+            native_result = super().reverse()  # type: ignore[misc]
             return self._wrap_native_result(native_result)
 
         from ..nfa import ExtendedNFA  # import différé pour éviter un cycle

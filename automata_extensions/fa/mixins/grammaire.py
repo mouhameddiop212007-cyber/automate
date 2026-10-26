@@ -47,9 +47,7 @@ class GrammaireMixin(FAHost):
         )
 
     @classmethod
-    def grammar_to_automaton(
-        cls, grammar: RegularGrammar
-    ) -> "ExtendedNFA":
+    def grammar_to_automaton(cls, grammar: RegularGrammar) -> "ExtendedNFA":
         """Convertit une grammaire régulière en automate équivalent (#55).
 
         Construction inverse de to_grammar : un état par non-terminal, une
@@ -230,9 +228,7 @@ class GrammaireMixin(FAHost):
             allow_partial=True,
         )
 
-    def automaton_morphism(
-        self, other: Any, mapping: Dict[Any, Any]
-    ) -> bool:
+    def automaton_morphism(self, other: Any, mapping: Dict[Any, Any]) -> bool:
         """Vérifie si `mapping` est un morphisme d'automates valide de self
         vers other : une application entre les états qui préserve les
         transitions (#61).

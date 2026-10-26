@@ -291,9 +291,7 @@ class ConversionsMixin(FAHost):
         )
 
     @classmethod
-    def regex_to_nfa(
-        cls, regex: str, input_symbols: Set[str]
-    ) -> "ExtendedFA":
+    def regex_to_nfa(cls, regex: str, input_symbols: Set[str]) -> "ExtendedFA":
         """Construit un NFA reconnaissant le langage d'une expression
         régulière (construction de Thompson).
 
@@ -447,9 +445,7 @@ class ConversionsMixin(FAHost):
 
         dfa: Any = self if isinstance(self, DFA) else self.determinize()
 
-        equations: Dict[
-            Any, Tuple[Dict[Any, str], Optional[str]]
-        ] = {}
+        equations: Dict[Any, Tuple[Dict[Any, str], Optional[str]]] = {}
         for state in dfa.states:
             coef: Dict[Any, str] = {}
             for symbol in dfa.input_symbols:

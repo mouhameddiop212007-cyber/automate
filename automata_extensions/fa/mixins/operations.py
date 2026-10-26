@@ -142,9 +142,7 @@ class OperationsMixin(FAHost):
 
         initial_pair = (self.initial_state, other.initial_state)
         new_states = {initial_pair}
-        new_transitions: Dict[
-            Tuple[Any, Any], Dict[Any, Tuple[Any, Any]]
-        ] = {}
+        new_transitions: Dict[Tuple[Any, Any], Dict[Any, Tuple[Any, Any]]] = {}
         stack = [initial_pair]
 
         while stack:
@@ -179,9 +177,7 @@ class OperationsMixin(FAHost):
             },
             initial_state=state_names[initial_pair],
             final_states={
-                state_names[pair]
-                for pair in new_states
-                if predicate(*pair)
+                state_names[pair] for pair in new_states if predicate(*pair)
             },
             allow_partial=True,
         )
@@ -560,9 +556,7 @@ class OperationsMixin(FAHost):
         """
         from automata.fa.dfa import DFA
 
-        self_dfa: Any = (
-            self if isinstance(self, DFA) else self.determinize()
-        )
+        self_dfa: Any = self if isinstance(self, DFA) else self.determinize()
         other_dfa: Any = (
             other if isinstance(other, DFA) else other.determinize()
         )

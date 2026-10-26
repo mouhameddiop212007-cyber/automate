@@ -6,3 +6,11 @@ __pycache__/
 *.egg-info/
 *.png
 .DS_Store
+.mypy_cache/
+.ruff_cache/
+.idea/
+.ipynb_checkpoints/
+*.pyc
+tmp.dot
+Exemples.pdf
+automata_documentation_v1.pdf

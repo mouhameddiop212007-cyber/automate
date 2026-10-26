@@ -13,6 +13,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "hypothesis", "ruff", "mypy"]
+visual = ["pygraphviz", "coloraide"]
 
 [tool.setuptools.packages.find]
 include = ["automata_extensions*"]

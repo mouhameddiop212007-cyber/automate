@@ -1,6 +1,17 @@
+import importlib.util
+
+import pytest
+
 from tests.conftest import make_simple_dfa
 
+needs_graphviz = pytest.mark.skipif(
+    importlib.util.find_spec("pygraphviz") is None
+    or importlib.util.find_spec("coloraide") is None,
+    reason="pygraphviz et coloraide requis (pip install .[visual])",
+)
 
+
+@needs_graphviz
 def test_export_dot_returns_nonempty_string():
     dfa = make_simple_dfa()
     dot_source = dfa.export_dot()
@@ -9,6 +20,7 @@ def test_export_dot_returns_nonempty_string():
     assert "digraph" in dot_source or "->" in dot_source
 
 
+@needs_graphviz
 def test_export_svg_creates_file(tmp_path):
     dfa = make_simple_dfa()
     filename = str(tmp_path / "automate.svg")
@@ -17,6 +29,7 @@ def test_export_svg_creates_file(tmp_path):
     assert (tmp_path / "automate.svg").exists()
 
 
+@needs_graphviz
 def test_export_pdf_creates_file(tmp_path):
     dfa = make_simple_dfa()
     filename = str(tmp_path / "automate.pdf")

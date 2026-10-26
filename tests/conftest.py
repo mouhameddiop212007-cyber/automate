@@ -2,6 +2,13 @@
 
 from automata_extensions.fa.dfa import ExtendedDFA
 from automata_extensions.fa.nfa import ExtendedNFA
+from hypothesis import settings
+
+# Pas de limite de temps par exemple : les machines d'intégration
+# continue sont plus lentes, et une limite stricte donnerait des
+# échecs aléatoires sans qu'il y ait de bug.
+settings.register_profile("projet", deadline=None)
+settings.load_profile("projet")
 
 
 def make_simple_dfa():

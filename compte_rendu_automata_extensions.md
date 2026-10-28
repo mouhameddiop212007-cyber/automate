@@ -13,6 +13,7 @@ Document autonome (§6 du sujet) : il permet de reprendre le projet, dans un nou
 - **Objectif** : fournir un paquet Python `automata_extensions` qui **étend** automata-lib (version figée **9.2.0**) avec 62 algorithmes sur les automates finis, répartis en 3 niveaux, **sans jamais modifier automata-lib**.
 - **Exigences du sujet (§4)** : héritage + mixins, immuabilité (chaque méthode renvoie un nouvel automate), docstrings (Returns / Complexity / References), tests `pytest`, packaging `pip install -e .`, documentation (README, exemples, complexité), PEP8, `typing` / `FrozenSet` (§4.2).
 - **Environnement** : macOS, venv `automate-env` dans `~/Documents/automate`, Graphviz / pygraphviz installés via Homebrew.
+- **Publication** : dépôt GitHub (privé), historique nettoyé, intégration continue, badge de statut dans le README.
 - **Objectif personnel** : se démarquer par des extensions difficiles (property-based testing, Hopcroft, differential testing).
 
 ## 2. État actuel (mesuré)
@@ -26,7 +27,9 @@ Document autonome (§6 du sujet) : il permet de reprendre le projet, dans un nou
 | Typage (`mypy`, `disallow_untyped_defs`) | **Success** sur 16 fichiers |
 | Documentation | `README.md` (101 lignes) + docstrings avec complexité |
 | Packaging | `pyproject.toml` (setuptools), `pip install -e .` |
-| Versionnement | dépôt git, un commit par étape |
+| Versionnement | git, un commit par étape ; dépôt GitHub privé `mouhameddiop212007-cyber/automate` |
+| Intégration continue | **GitHub Actions verte** (Ubuntu, Python 3.12) : `ruff check`, `ruff format --check`, `mypy`, `pytest --cov` |
+| Reproductibilité | clone + venv neuf + `pip install -e ".[dev]"` : **146 passed, 3 skipped** ; avec `.[dev,visual]` : 149 passed |
 
 Couverture par fichier : `grammar.py`, `visualisation.py`, `_host.py`, `dfa.py`, `nfa.py` à 100 % ; `analyse.py` 99 % ; `conversions.py` 99 % ; `grammaire.py` 98 % ; `operations.py` 97 % ; `parse_tree.py` 97 % ; `base.py` 96 % ; `regex_ast.py` 94 %.
 
@@ -70,7 +73,9 @@ Principes :
    - `left_quotient` / `right_quotient` → `left_quotient_word` / `right_quotient_word` (les natifs prennent un automate en argument).
 5. **Document PDF non fiable écarté** : un PDF fourni (`automata_documentation_v1.pdf`) contredisait le sujet officiel et présentait des signes de fabrication. Seule la partie vérifiée par introspection dans le venv a été retenue.
 6. **Typage des mixins par `FAHost`** (voir §6).
-7. **Méthode de travail** : un algorithme, ses tests, un commit ; scripts de remplacement qui comptent les occurrences et refusent de modifier en cas d'ambiguïté (voir §10).
+7. **Extra optionnel `visual`** (`pygraphviz`, `coloraide`) : ces paquets exigent Graphviz sur la machine ; ils sont donc déclarés comme extra (`pip install -e ".[visual]"`) et les 3 tests de visualisation correspondants sont ignorés (`skipif`) quand ils sont absents, au lieu d'échouer.
+8. **Intégration continue** : une machine vierge à chaque push, pour détecter ce qui ne marchait que sur le poste de l'étudiant.
+9. **Méthode de travail** : un algorithme, ses tests, un commit ; scripts de remplacement qui comptent les occurrences et refusent de modifier en cas d'ambiguïté (voir §10).
 
 ## 5. Bugs trouvés et corrigés (leçons)
 
@@ -82,6 +87,14 @@ Principes :
 6. **Tests faussement verts** : `is_isomorphic` pour alphabets différents passait parce que le nombre d'états était testé avant l'alphabet (corrigé avec deux DFA à 3 états) ; plusieurs tests collés avec nano n'avaient jamais été ajoutés (vérification par `grep -n "^def test_"`).
 7. **Code mort** détecté par la couverture et supprimé (garde jamais fausse dans `is_language_infinite`, garde jamais vraie dans `determinize`).
 8. **Violation du principe de substitution (Liskov), détectée par mypy** : les wrappers `complement`, `union`, `intersection`, `difference` n'acceptaient pas `retain_names` / `minify` de la méthode native `DFA`. `ExtendedDFA(...).union(x, minify=False)` plantait alors que `DFA.union` l'accepte. Correction : `**kwargs` transmis à la méthode native, vérifié par exécution (résultat `ExtendedDFA` dans les trois cas). C'est un vrai bug de comportement, pas qu'une question de typage.
+
+### Leçons de la publication sur GitHub
+
+- **Historique git pollué** : le venv, les caches et des PNG avaient été versionnés avant l'ajout du `.gitignore` (13 068 fichiers, 156 Mo). Corrigé par `git rm --cached`, `git filter-branch`, `gc` et push forcé : 38 fichiers suivis, `.git` à 1,7 Mo.
+- **Dépendance cachée** : `pip install -e ".[dev]"` dans un venv neuf a révélé que les tests de visualisation exigeaient `pygraphviz` et `coloraide`, jamais déclarés (installés à la main sur le Mac). Corrigé par l'extra `visual` et des `skipif`.
+- **Fichier orphelin** : un ancien `test_automate.py` à la racine (import de `matplotlib`) était collecté par pytest sur la CI. Corrigé par `testpaths = ["tests"]`.
+- **Format** : `ruff format --check` échouait en CI car le formatage n'avait pas été appliqué avant le push.
+- **Flakiness** : profil `hypothesis` avec `deadline=None`, car une machine CI plus lente dépassait la limite de temps par exemple.
 
 ## 6. Choix techniques détaillés : typage (§4.2)
 
@@ -120,10 +133,10 @@ Principes :
 
 1. Rendre déterministes les tests d'`automaton_morphism` (entrées fixes, ordre trié).
 2. Tests ciblés sur les lignes non couvertes les plus simples (`regex_ast.py`, 13 lignes).
-3. Intégration continue GitHub Actions (`ruff`, `mypy`, `pytest --cov`).
+3. ~~Intégration continue GitHub Actions~~ : **fait**, voir §2.
 4. Dérivées partielles d'Antimirov ; `ExtendedGNFA` ; export TikZ avec `dot2tex` comme dépendance optionnelle.
 5. Extensions plus ambitieuses (non commencées) : automates à pile, L\* d'Angluin, automates de Büchi, CYK / forme normale de Chomsky, simulateur HTML animé.
-6. Avant le rendu : relire le README, ajouter un petit notebook d'exemples, vérifier `pip install -e .` dans un venv propre.
+6. Avant le rendu : relire le README, ajouter un petit notebook d'exemples (la vérification de `pip install -e .` dans un venv propre est **faite**) ; envisager de passer le dépôt en public pour que le badge CI soit visible de tous ; matrice Python 3.10–3.12 dans la CI.
 
 ## 10. Contexte implicite et mémoire de travail
 
@@ -138,8 +151,8 @@ Principes :
 ```bash
 cd ~/Documents/automate
 source automate-env/bin/activate
-pip install -e ".[dev]"
-pytest -q                                   # attendu : 149 passed
+pip install -e ".[dev,visual]"            # `visual` : pygraphviz + coloraide (Graphviz requis)
+pytest -q                                   # attendu : 149 passed (146 passed, 3 skipped sans l'extra visual)
 pytest --cov=automata_extensions --cov-report=term-missing -q   # attendu : 97 %
 ruff check automata_extensions tests        # attendu : All checks passed!
 ruff format --check automata_extensions tests

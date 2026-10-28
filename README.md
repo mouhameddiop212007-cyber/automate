@@ -49,6 +49,10 @@ nfa.accepts_input('aab')         # True
 ExtendedDFA.brzozowski_derivative('ab', 'a')   # 'b'
 ```
 
+## Exemples
+
+Le notebook [`exemples.ipynb`](exemples.ipynb) déroule une visite guidée (analyse, opérations, minimisation, regex, NFA epsilon, grammaires, export DOT), avec les sorties.
+
 ## Architecture
 
 ```

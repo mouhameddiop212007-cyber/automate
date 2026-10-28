@@ -367,6 +367,65 @@ class ConversionsMixin(FAHost):
         return to_string(derivative(node, symbol))
 
     @classmethod
+    def antimirov_automaton(
+        cls, regex: str, input_symbols: Set[str]
+    ) -> "ExtendedFA":
+        """Construit l'automate d'Antimirov d'une expression régulière :
+        un NFA dont les états sont les dérivées partielles successives.
+
+        Parameters
+        ----------
+        regex : str
+        input_symbols : set
+
+        Returns
+        -------
+        ExtendedNFA
+            NFA sans transition epsilon, d'au plus n + 1 états, où n est
+            le nombre d'occurrences de symboles dans `regex`.
+
+        Complexity
+        ----------
+        Au plus n + 1 états (théorème d'Antimirov), donc beaucoup plus
+        petit en général que l'automate de Brzozowski.
+
+        References
+        ----------
+        V. Antimirov, Partial derivatives of regular expressions and
+        finite automaton constructions, TCS 155 (1996).
+        """
+        from ...regex_ast import is_nullable, parse_regex
+        from ...regex_ast import partial_derivatives
+        from ..nfa import ExtendedNFA
+
+        root = parse_regex(regex)
+        names: Dict[RegexNode, str] = {root: "q0"}
+        transitions: Dict[str, Dict[str, Set[str]]] = {}
+        stack = [root]
+
+        while stack:
+            node = stack.pop()
+            targets: Dict[str, Set[str]] = {}
+            for symbol in sorted(input_symbols):
+                reached = partial_derivatives(node, symbol)
+                if not reached:
+                    continue
+                for target in sorted(reached, key=repr):
+                    if target not in names:
+                        names[target] = f"q{len(names)}"
+                        stack.append(target)
+                targets[symbol] = {names[t] for t in reached}
+            transitions[names[node]] = targets
+
+        return ExtendedNFA(
+            states=set(names.values()),
+            input_symbols=set(input_symbols),
+            transitions=transitions,
+            initial_state="q0",
+            final_states={names[n] for n in names if is_nullable(n)},
+        )
+
+    @classmethod
     def brzozowski_automaton(
         cls, regex: str, input_symbols: Set[str]
     ) -> "ExtendedFA":

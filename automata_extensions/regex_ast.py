@@ -363,3 +363,57 @@ def solve_equation_system(
     self_loop = coef[start_variable].pop(start_variable, Empty())
     result = mk_concat([mk_star(self_loop), const[start_variable]])
     return to_string(result)
+
+
+def partial_derivatives(node: RegexNode, symbol: str) -> FrozenSet[RegexNode]:
+    """Calcule l'ensemble des dérivées partielles d'Antimirov de `node`
+    par rapport à `symbol`.
+
+    Contrairement à la dérivée de Brzozowski (une seule expression),
+    on obtient un ensemble d'expressions dont l'union dénote la dérivée.
+    Règles : d(a) = {ε}, d(r|s) = d(r) ∪ d(s),
+    d(r.s) = d(r).s ∪ (d(s) si r est nullable), d(r*) = d(r).r*.
+
+    Returns
+    -------
+    frozenset of RegexNode
+        Ensemble (éventuellement vide) de dérivées partielles.
+
+    Complexity
+    ----------
+    Linéaire en la taille de l'expression (à des facteurs de hachage
+    près).
+
+    References
+    ----------
+    V. Antimirov, Partial derivatives of regular expressions and finite
+    automaton constructions, TCS 155 (1996).
+    """
+    if isinstance(node, (Empty, Epsilon)):
+        return frozenset()
+    if isinstance(node, Symbol):
+        if node.char == symbol:
+            return frozenset({Epsilon()})
+        return frozenset()
+    if isinstance(node, Union):
+        merged: FrozenSet[RegexNode] = frozenset()
+        for part in node.parts:
+            merged = merged | partial_derivatives(part, symbol)
+        return merged
+    if isinstance(node, Concat):
+        head, *rest = node.parts
+        rest_node = mk_concat(rest)
+        derived = {
+            mk_concat([d, rest_node])
+            for d in partial_derivatives(head, symbol)
+        }
+        if is_nullable(head):
+            derived |= partial_derivatives(rest_node, symbol)
+        return frozenset(d for d in derived if not isinstance(d, Empty))
+    if isinstance(node, Star):
+        starred = {
+            mk_concat([d, node])
+            for d in partial_derivatives(node.inner, symbol)
+        }
+        return frozenset(d for d in starred if not isinstance(d, Empty))
+    raise TypeError(f"nœud inconnu : {node!r}")

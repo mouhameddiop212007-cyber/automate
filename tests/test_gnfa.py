@@ -131,3 +131,28 @@ def test_default_order_agrees_with_native_to_regex(factory):
     native = ExtendedNFA.regex_to_nfa(gnfa.to_regex(), input_symbols=ALPHABET)
     for word in WORDS:
         assert ours.accepts_input(word) == native.accepts_input(word)
+
+
+def test_bypass_label_epsilon_everywhere_stays_epsilon():
+    gnfa = even_a().to_gnfa()
+    assert gnfa._bypass_label("", None, "", "") == ""
+
+
+def test_bypass_label_optional_path():
+    gnfa = even_a().to_gnfa()
+    assert gnfa._bypass_label("a", "b", "c", "") == "(ab*c)?"
+
+
+def test_bypass_label_parallel_union_edge_is_parenthesised():
+    gnfa = even_a().to_gnfa()
+    assert gnfa._bypass_label("c", None, "d", "a|b") == "cd|(a|b)"
+
+
+def test_bypass_label_union_prefix_is_parenthesised():
+    gnfa = even_a().to_gnfa()
+    assert gnfa._bypass_label("a|b", None, "c", None) == "(a|b)c"
+
+
+def test_bypass_label_epsilon_self_loop_is_ignored():
+    gnfa = even_a().to_gnfa()
+    assert gnfa._bypass_label("a", "", "b", None) == "ab"

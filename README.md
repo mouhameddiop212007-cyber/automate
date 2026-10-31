@@ -53,6 +53,23 @@ ExtendedDFA.brzozowski_derivative('ab', 'a')   # 'b'
 
 Le notebook [`visite_guidee.ipynb`](visite_guidee.ipynb) déroule une visite guidée (analyse, opérations, minimisation, regex, NFA epsilon, grammaires, export DOT), avec les sorties.
 
+## Extensions au-delà du cahier des charges
+
+- **Tests par propriétés** (`hypothesis`) : 16 propriétés mathématiques vérifiées sur des automates aléatoires ; elles ont révélé deux vrais bugs (voir le compte rendu).
+- **Hopcroft** : `minimize_hopcroft()`, validé contre `minimize()` par differential testing.
+- **Antimirov** : un NFA d'au plus n + 1 états, bien plus petit que l'automate de Brzozowski.
+- **`ExtendedGNFA`** : élimination d'états pas à pas, avec l'ordre au choix.
+
+```python
+nfa = ExtendedNFA.antimirov_automaton("(a|b)*a(a|b)(a|b)", {"a", "b"})
+len(nfa.states)                          # 4 (contre 8 pour Brzozowski)
+
+g = dfa.to_gnfa()                        # DFA -> GNFA
+g.to_regex_with_order(["i", "p"])        # (ab*a|b)*
+g.to_regex_with_order(["p", "i"])        # même langage, écriture plus lourde
+g.elimination_steps()                    # tous les GNFA intermédiaires
+```
+
 ## Architecture
 
 ```

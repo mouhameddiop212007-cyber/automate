@@ -21,17 +21,18 @@ Document autonome (§6 du sujet) : il permet de reprendre le projet, dans un nou
 | Critère | Résultat |
 |---|---|
 | Algorithmes du cahier des charges | **62 / 62** (niveau 1 : 41, niveau 2 : 13, niveau 3 : 8) |
-| Tests | **149 passent** (133 unitaires + 16 propriétés `hypothesis` à 200 exemples) |
-| Couverture (`pytest-cov`) | **97 %** (1094 instructions, 31 non couvertes) |
+| Extensions hors cahier des charges | `minimize_hopcroft`, tests par propriétés (`hypothesis`), dérivées partielles d'Antimirov, `ExtendedGNFA` (élimination d'états pas à pas) |
+| Tests | **190 passent** (174 unitaires + 16 propriétés `hypothesis` à 200 exemples) |
+| Couverture (`pytest-cov`) | **97 %** (1210 instructions, 32 non couvertes) |
 | PEP8 (`ruff`, règles E, W, F, 79 colonnes, `ruff format`) | **0 erreur** |
-| Typage (`mypy`, `disallow_untyped_defs`) | **Success** sur 16 fichiers |
+| Typage (`mypy`, `disallow_untyped_defs`) | **Success** sur 17 fichiers |
 | Documentation | `README.md` (101 lignes) + docstrings avec complexité |
 | Packaging | `pyproject.toml` (setuptools), `pip install -e .` |
 | Versionnement | git, un commit par étape ; dépôt GitHub privé `mouhameddiop212007-cyber/automate` |
 | Intégration continue | **GitHub Actions verte** (Ubuntu, Python 3.12) : `ruff check`, `ruff format --check`, `mypy`, `pytest --cov` |
 | Reproductibilité | clone + venv neuf + `pip install -e ".[dev]"` : **146 passed, 3 skipped** ; avec `.[dev,visual]` : 149 passed |
 
-Couverture par fichier : `grammar.py`, `visualisation.py`, `_host.py`, `dfa.py`, `nfa.py` à 100 % ; `analyse.py` 99 % ; `conversions.py` 99 % ; `grammaire.py` 98 % ; `operations.py` 97 % ; `parse_tree.py` 97 % ; `base.py` 96 % ; `regex_ast.py` 94 %.
+Couverture par fichier : `grammar.py`, `visualisation.py`, `_host.py`, `dfa.py`, `nfa.py`, `gnfa.py` à 100 % ; `analyse.py` 99 % ; `conversions.py` 99 % ; `grammaire.py` 97 % ; `operations.py` 97 % ; `parse_tree.py` 97 % ; `base.py` 96 % ; `regex_ast.py` 94 %.
 
 ## 3. Architecture actuelle
 
@@ -63,6 +64,23 @@ Principes :
 - `_wrap_native_result(automaton)` reconstruit un `Extended*` à partir d'un résultat natif, pour que les wrappers restent chaînables (`dfa.union(x).trim().minimize()`).
 - L'epsilon est le symbole `''`, absent de `input_symbols` : on itère donc sur `self.transitions.get(state, {})` et non sur l'alphabet.
 
+### Extensions récentes
+
+- **`partial_derivatives` / `antimirov_automaton`** (`regex_ast.py`, `mixins/conversions.py`) : la dérivée de Brzozowski est une expression, celle d'Antimirov un *ensemble* d'expressions ; chaque élément devient un état d'un NFA sans epsilon.
+- **`ExtendedGNFA`** (`fa/gnfa.py`) : étend directement le `GNFA` natif. Méthodes : `eliminable_states`, `eliminate_state` (renvoie un nouveau GNFA), `elimination_steps`, `to_regex_with_order` ; `to_gnfa()` sur DFA/NFA.
+
+Mesures (nombre d'états, sortie de terminal) :
+
+| Regex | Brzozowski (DFA) | Antimirov (NFA) | Thompson (`NFA.from_regex`) |
+|---|---|---|---|
+| `a*b` | 3 | 2 | 5 |
+| `(a\|b)*abb` | 4 | 4 | 12 |
+| `(ab\|a)*` | 3 | 2 | 8 |
+| `(a\|b)*a(a\|b)(a\|b)` | 8 | 4 | 18 |
+| `ab*a\|b` | 4 | 3 | 10 |
+
+Le quatrième cas est l'exemple classique d'explosion exponentielle du DFA (2³ états) face à un NFA de 4 états.
+
 ## 4. Historique des décisions
 
 1. **Module externe, jamais de modification d'automata-lib** (version figée 9.2.0) : conforme au §4.2.
@@ -76,6 +94,8 @@ Principes :
 7. **Extra optionnel `visual`** (`pygraphviz`, `coloraide`) : ces paquets exigent Graphviz sur la machine ; ils sont donc déclarés comme extra (`pip install -e ".[visual]"`) et les 3 tests de visualisation correspondants sont ignorés (`skipif`) quand ils sont absents, au lieu d'échouer.
 8. **Intégration continue** : une machine vierge à chaque push, pour détecter ce qui ne marchait que sur le poste de l'étudiant.
 9. **Méthode de travail** : un algorithme, ses tests, un commit ; scripts de remplacement qui comptent les occurrences et refusent de modifier en cas d'ambiguïté (voir §10).
+10. **`ExtendedGNFA` n'hérite pas d'`ExtendedFA`** : un GNFA a des transitions p → q étiquetées par des regex et un seul `final_state`, alors que les mixins supposent la structure DFA/NFA (`transitions[état][symbole]`, `final_states`). Il étend donc directement le `GNFA` natif, dont `from_dfa` / `from_nfa` renvoient `cls(...)` et donnent donc un `ExtendedGNFA`.
+11. **Ordre d'élimination visible** : `to_regex` natif choisit seul l'état à éliminer. `to_regex_with_order` rend ce choix explicite : pour « nombre pair de a », l'ordre `i, p` donne `(ab*a|b)*` (identique au natif) et l'ordre `p, i` donne `b*a(ab*a|b)*ab*|b*`, même langage mais écriture plus lourde.
 
 ## 5. Bugs trouvés et corrigés (leçons)
 
@@ -114,7 +134,7 @@ Principes :
 
 **Niveau 3 — grammaires (8)** : `to_grammar` / `grammar_to_automaton`, `derivation_tree`, `arden_lemma` / `solve_equation_system`, `myhill_nerode_language_classes`, `residual_automaton`, `automaton_morphism`, `syntactic_monoid`.
 
-**Extensions différenciantes** : tests par propriétés avec `hypothesis` (16 propriétés, 200 exemples chacune) et `minimize_hopcroft` (algorithme de Hopcroft, validé par differential testing contre `minimize()` : les deux résultats sont isomorphes et minimaux).
+**Extensions différenciantes** : tests par propriétés avec `hypothesis` (16 propriétés, 200 exemples chacune) et `minimize_hopcroft` (algorithme de Hopcroft, validé par differential testing contre `minimize()` : les deux résultats sont isomorphes et minimaux). **Antimirov** (`partial_derivatives`, `antimirov_automaton` : NFA d'au plus n + 1 états, validé contre la construction de Thompson sur tous les mots jusqu'à la longueur 6) et **`ExtendedGNFA`** (élimination d'états pas à pas, ordre au choix).
 
 ## 8. Limites connues (honnêtes)
 
@@ -127,14 +147,14 @@ Principes :
 - Typage : voir §6 (`FAHost`, 4 `type: ignore`, retours `Any` sur les wrappers).
 - Lignes non couvertes (31 sur 1094) : branches défensives (`base.py:61`), `__eq__` / `__hash__` de l'AST déjà exercés indirectement, cas limites de `syntactic_monoid`.
 - Certains tests d'`automaton_morphism` parcourent des branches différentes selon l'ordre d'itération des ensembles (couverture légèrement non déterministe).
-- Pas de `ExtendedGNFA` (mentionné dans l'exemple du §5 du sujet, non exigé dans la liste des 62).
+- `ExtendedGNFA` n'hérite pas d'`ExtendedFA` (structure différente) : il n'a pas accès aux algorithmes d'analyse des mixins, seulement à ses propres méthodes.
 
 ## 9. TODO possibles (par ordre de valeur)
 
 1. Rendre déterministes les tests d'`automaton_morphism` (entrées fixes, ordre trié).
 2. Tests ciblés sur les lignes non couvertes les plus simples (`regex_ast.py`, 13 lignes).
 3. ~~Intégration continue GitHub Actions~~ : **fait**, voir §2.
-4. Dérivées partielles d'Antimirov ; `ExtendedGNFA` ; export TikZ avec `dot2tex` comme dépendance optionnelle.
+4. Export TikZ avec `dot2tex` comme dépendance optionnelle (Antimirov et `ExtendedGNFA` : **faits**, voir §3).
 5. Extensions plus ambitieuses (non commencées) : automates à pile, L\* d'Angluin, automates de Büchi, CYK / forme normale de Chomsky, simulateur HTML animé.
 6. Avant le rendu : relire le README, ajouter un petit notebook d'exemples (la vérification de `pip install -e .` dans un venv propre est **faite**) ; envisager de passer le dépôt en public pour que le badge CI soit visible de tous ; matrice Python 3.10–3.12 dans la CI.
 
@@ -152,11 +172,11 @@ Principes :
 cd ~/Documents/automate
 source automate-env/bin/activate
 pip install -e ".[dev,visual]"            # `visual` : pygraphviz + coloraide (Graphviz requis)
-pytest -q                                   # attendu : 149 passed (146 passed, 3 skipped sans l'extra visual)
+pytest -q                                   # attendu : 190 passed (187 passed, 3 skipped sans l'extra visual)
 pytest --cov=automata_extensions --cov-report=term-missing -q   # attendu : 97 %
 ruff check automata_extensions tests        # attendu : All checks passed!
 ruff format --check automata_extensions tests
-mypy                                        # attendu : Success: no issues found in 16 source files
+mypy                                        # attendu : Success: no issues found in 17 source files
 git log --oneline | head
 ```
 

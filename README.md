@@ -60,6 +60,7 @@ Le notebook [`visite_guidee.ipynb`](visite_guidee.ipynb) déroule une visite gui
 - **Antimirov** : un NFA d'au plus n + 1 états, bien plus petit que l'automate de Brzozowski.
 - **`ExtendedGNFA`** : élimination d'états pas à pas, avec l'ordre au choix.
 - **Export TikZ** natif (sans `dot2tex`) : code `tikzpicture` prêt à coller dans un document LaTeX.
+- **L\* d'Angluin** : apprend un DFA minimal en interrogeant un enseignant (un DFA, ou une simple fonction Python).
 
 ```python
 nfa = ExtendedNFA.antimirov_automaton("(a|b)*a(a|b)(a|b)", {"a", "b"})
@@ -72,6 +73,10 @@ g.elimination_steps()                    # tous les GNFA intermédiaires
 
 dfa.export_tikz()                        # code TikZ (str)
 dfa.export_tikz("automate.tex", standalone=True)   # document LaTeX compilable
+
+from automata_extensions.learning import PredicateTeacher, angluin_lstar
+teacher = PredicateTeacher({"a", "b"}, lambda w: w.count("a") % 3 == 0, max_length=7)
+angluin_lstar(teacher)                   # DFA à 3 états, appris par 19 + 2 questions
 ```
 
 ## Architecture

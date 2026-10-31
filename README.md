@@ -59,6 +59,7 @@ Le notebook [`visite_guidee.ipynb`](visite_guidee.ipynb) déroule une visite gui
 - **Hopcroft** : `minimize_hopcroft()`, validé contre `minimize()` par differential testing.
 - **Antimirov** : un NFA d'au plus n + 1 états, bien plus petit que l'automate de Brzozowski.
 - **`ExtendedGNFA`** : élimination d'états pas à pas, avec l'ordre au choix.
+- **Export TikZ** natif (sans `dot2tex`) : code `tikzpicture` prêt à coller dans un document LaTeX.
 
 ```python
 nfa = ExtendedNFA.antimirov_automaton("(a|b)*a(a|b)(a|b)", {"a", "b"})
@@ -68,6 +69,9 @@ g = dfa.to_gnfa()                        # DFA -> GNFA
 g.to_regex_with_order(["i", "p"])        # (ab*a|b)*
 g.to_regex_with_order(["p", "i"])        # même langage, écriture plus lourde
 g.elimination_steps()                    # tous les GNFA intermédiaires
+
+dfa.export_tikz()                        # code TikZ (str)
+dfa.export_tikz("automate.tex", standalone=True)   # document LaTeX compilable
 ```
 
 ## Architecture

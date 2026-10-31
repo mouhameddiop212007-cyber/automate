@@ -22,8 +22,8 @@ Document autonome (§6 du sujet) : il permet de reprendre le projet, dans un nou
 |---|---|
 | Algorithmes du cahier des charges | **62 / 62** (niveau 1 : 41, niveau 2 : 13, niveau 3 : 8) |
 | Extensions hors cahier des charges | `minimize_hopcroft`, tests par propriétés (`hypothesis`), dérivées partielles d'Antimirov, `ExtendedGNFA` (élimination d'états pas à pas) |
-| Tests | **190 passent** (174 unitaires + 16 propriétés `hypothesis` à 200 exemples) |
-| Couverture (`pytest-cov`) | **97 %** (1210 instructions, 32 non couvertes) |
+| Tests | **199 passent** (183 unitaires + 16 propriétés `hypothesis` à 200 exemples) |
+| Couverture (`pytest-cov`) | **98 %** (1269 instructions, 30 non couvertes) |
 | PEP8 (`ruff`, règles E, W, F, 79 colonnes, `ruff format`) | **0 erreur** |
 | Typage (`mypy`, `disallow_untyped_defs`) | **Success** sur 17 fichiers |
 | Documentation | `README.md` (101 lignes) + docstrings avec complexité |
@@ -68,6 +68,7 @@ Principes :
 
 - **`partial_derivatives` / `antimirov_automaton`** (`regex_ast.py`, `mixins/conversions.py`) : la dérivée de Brzozowski est une expression, celle d'Antimirov un *ensemble* d'expressions ; chaque élément devient un état d'un NFA sans epsilon.
 - **`ExtendedGNFA`** (`fa/gnfa.py`) : étend directement le `GNFA` natif. Méthodes : `eliminable_states`, `eliminate_state` (renvoie un nouveau GNFA), `elimination_steps`, `to_regex_with_order` ; `to_gnfa()` sur DFA/NFA.
+- **`export_tikz`** (`mixins/visualisation.py`) : code TikZ (bibliothèque `automata`) produit nativement, sans `dot2tex` : états placés sur une grille dans l'ordre d'un parcours en largeur, étiquettes parallèles fusionnées, epsilon en `$\varepsilon$`, caractères spéciaux de LaTeX échappés, option `standalone=True` pour un document compilable.
 
 Mesures (nombre d'états, sortie de terminal) :
 
@@ -96,6 +97,7 @@ Le quatrième cas est l'exemple classique d'explosion exponentielle du DFA (2³ 
 9. **Méthode de travail** : un algorithme, ses tests, un commit ; scripts de remplacement qui comptent les occurrences et refusent de modifier en cas d'ambiguïté (voir §10).
 10. **`ExtendedGNFA` n'hérite pas d'`ExtendedFA`** : un GNFA a des transitions p → q étiquetées par des regex et un seul `final_state`, alors que les mixins supposent la structure DFA/NFA (`transitions[état][symbole]`, `final_states`). Il étend donc directement le `GNFA` natif, dont `from_dfa` / `from_nfa` renvoient `cls(...)` et donnent donc un `ExtendedGNFA`.
 11. **Ordre d'élimination visible** : `to_regex` natif choisit seul l'état à éliminer. `to_regex_with_order` rend ce choix explicite : pour « nombre pair de a », l'ordre `i, p` donne `(ab*a|b)*` (identique au natif) et l'ordre `p, i` donne `b*a(ab*a|b)*ab*|b*`, même langage mais écriture plus lourde.
+12. **Export TikZ natif plutôt que `dot2tex`** : `dot2tex` est peu maintenu, exige Graphviz et LaTeX, et rendrait l'export intestable en CI. Un export natif est déterministe et testable ligne par ligne. **Leçon** : les premiers tests comparaient des chaînes et passaient, alors que le code produit ne compilait pas (`>=stealth'` est une syntaxe de l'ancien PGF, rejetée par PGF 3.1.10 : `Unknown arrow tip kind`). Corrigé en `>=stealth`, et ajout d'un test qui compile réellement le document avec `pdflatex` (ignoré s'il est absent).
 
 ## 5. Bugs trouvés et corrigés (leçons)
 
@@ -138,7 +140,6 @@ Le quatrième cas est l'exemple classique d'explosion exponentielle du DFA (2³ 
 
 ## 8. Limites connues (honnêtes)
 
-- `export_tikz` lève `NotImplementedError` : il faudrait l'outil externe `dot2tex`, non installé ; limite documentée plutôt que fonctionnalité simulée.
 - `is_isomorphic` est rigoureux pour les DFA ; pour un NFA, la comparaison simple de cardinal de successeurs ne suffirait pas (documenté dans la fonction).
 - `cartesian_product` ignore les transitions manquantes ; correct avec le prédicat par défaut (intersection), mais pas pour un prédicat arbitraire sur automates partiels.
 - `residual_automaton` : O(|Q|³ · |Σ|), car `language_equals` identifie les résiduels.
@@ -154,7 +155,7 @@ Le quatrième cas est l'exemple classique d'explosion exponentielle du DFA (2³ 
 1. Rendre déterministes les tests d'`automaton_morphism` (entrées fixes, ordre trié).
 2. Tests ciblés sur les lignes non couvertes les plus simples (`regex_ast.py`, 13 lignes).
 3. ~~Intégration continue GitHub Actions~~ : **fait**, voir §2.
-4. Export TikZ avec `dot2tex` comme dépendance optionnelle (Antimirov et `ExtendedGNFA` : **faits**, voir §3).
+4. ~~Antimirov, `ExtendedGNFA`, export TikZ~~ : **faits**, voir §3.
 5. Extensions plus ambitieuses (non commencées) : automates à pile, L\* d'Angluin, automates de Büchi, CYK / forme normale de Chomsky, simulateur HTML animé.
 6. Avant le rendu : relire le README, ajouter un petit notebook d'exemples (la vérification de `pip install -e .` dans un venv propre est **faite**) ; envisager de passer le dépôt en public pour que le badge CI soit visible de tous ; matrice Python 3.10–3.12 dans la CI.
 
@@ -172,8 +173,8 @@ Le quatrième cas est l'exemple classique d'explosion exponentielle du DFA (2³ 
 cd ~/Documents/automate
 source automate-env/bin/activate
 pip install -e ".[dev,visual]"            # `visual` : pygraphviz + coloraide (Graphviz requis)
-pytest -q                                   # attendu : 190 passed (187 passed, 3 skipped sans l'extra visual)
-pytest --cov=automata_extensions --cov-report=term-missing -q   # attendu : 97 %
+pytest -q                                   # attendu : 199 passed (3 tests de visualisation ignorés sans l'extra visual, 1 test de compilation ignoré sans pdflatex)
+pytest --cov=automata_extensions --cov-report=term-missing -q   # attendu : 98 %
 ruff check automata_extensions tests        # attendu : All checks passed!
 ruff format --check automata_extensions tests
 mypy                                        # attendu : Success: no issues found in 17 source files

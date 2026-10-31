@@ -320,6 +320,28 @@ class ConversionsMixin(FAHost):
             final_states=set(native_result.final_states),
         )
 
+    def to_gnfa(self) -> Any:
+        """Convertit l'automate en ExtendedGNFA équivalent (étape
+        intermédiaire explicite de l'élimination d'états).
+
+        Returns
+        -------
+        ExtendedGNFA
+            GNFA avec un état initial et un état final synthétiques.
+
+        Complexity
+        ----------
+        O(|Q|^2).
+        """
+        from automata.fa.dfa import DFA
+
+        from ..gnfa import ExtendedGNFA
+
+        automaton: Any = self
+        if isinstance(automaton, DFA):
+            return ExtendedGNFA.from_dfa(automaton)
+        return ExtendedGNFA.from_nfa(automaton)
+
     def to_regex_state_elimination(self) -> str:
         """Convertit l'automate en expression régulière équivalente, par
         élimination d'états successive.

@@ -61,6 +61,9 @@ Le notebook [`visite_guidee.ipynb`](visite_guidee.ipynb) déroule une visite gui
 - **`ExtendedGNFA`** : élimination d'états pas à pas, avec l'ordre au choix.
 - **Export TikZ** natif (sans `dot2tex`) : code `tikzpicture` prêt à coller dans un document LaTeX.
 - **L\* d'Angluin** : apprend un DFA minimal en interrogeant un enseignant (un DFA, ou une simple fonction Python).
+- **Grammaires hors-contexte** (`cfg.py`) : forme normale de Chomsky, reconnaissance CYK, arbre de dérivation, Earley (oracle indépendant), énumération des mots.
+- **Automates à pile** (`pda.py`) : PDA non déterministe (pile vide ou état final), recherche d'un calcul acceptant, conversion grammaire -> PDA.
+- **Automates de Büchi** (`buchi.py`) : mots infinis ultimement périodiques, vacuité avec témoin, intersection (Choueka), union.
 
 ```python
 nfa = ExtendedNFA.antimirov_automaton("(a|b)*a(a|b)(a|b)", {"a", "b"})
@@ -77,6 +80,16 @@ dfa.export_tikz("automate.tex", standalone=True)   # document LaTeX compilable
 from automata_extensions.learning import PredicateTeacher, angluin_lstar
 teacher = PredicateTeacher({"a", "b"}, lambda w: w.count("a") % 3 == 0, max_length=7)
 angluin_lstar(teacher)                   # DFA à 3 états, appris par 19 + 2 questions
+from automata_extensions.cfg import ContextFreeGrammar
+g = ContextFreeGrammar.from_text("S -> a S b | ε")
+g.cyk("aaabbb")                          # True (CYK sur la forme normale de Chomsky)
+g.to_cnf()                               # 7 productions, is_cnf() == True
+g.cyk_parse("aabb")                      # arbre de dérivation
+g.to_pda().accepts("aabb")               # automate à pile équivalent
+from automata_extensions.buchi import BuchiAutomaton
+inf_a = BuchiAutomaton({0, 1}, "ab", {(0, "a"): {1}, (0, "b"): {0}, (1, "a"): {1}, (1, "b"): {0}}, 0, {1})
+inf_a.accepts_lasso("b", "ab")           # True : b(ab)^ω a une infinité de a
+inf_a.find_accepted_lasso()              # (['a'], ['a'])
 ```
 
 ## Architecture

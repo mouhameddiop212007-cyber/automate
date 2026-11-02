@@ -21,24 +21,28 @@ Document autonome (§6 du sujet) : il permet de reprendre le projet, dans un nou
 | Critère | Résultat |
 |---|---|
 | Algorithmes du cahier des charges | **62 / 62** (niveau 1 : 41, niveau 2 : 13, niveau 3 : 8) |
-| Extensions hors cahier des charges | `minimize_hopcroft`, tests par propriétés (`hypothesis`), dérivées partielles d'Antimirov, `ExtendedGNFA` (élimination d'états pas à pas), export TikZ natif, L\* d'Angluin |
-| Tests | **210 passent** (192 unitaires + 18 propriétés `hypothesis`, 16 à 200 exemples et 2 à 100) |
-| Couverture (`pytest-cov`) | **98 %** (1368 instructions, 32 non couvertes) |
+| Extensions hors cahier des charges | `minimize_hopcroft`, tests par propriétés (`hypothesis`), dérivées partielles d'Antimirov, `ExtendedGNFA` (élimination d'états pas à pas), export TikZ natif, L\* d'Angluin, grammaires hors-contexte (CNF, CYK, Earley), automates à pile, automates de Büchi |
+| Tests | **270 passent** (247 unitaires + 23 propriétés `hypothesis` : 16 à 200 exemples, 5 à 100 et 2 à 60) |
+| Couverture (`pytest-cov`) | **98 %** (1952 instructions, 31 non couvertes) |
 | PEP8 (`ruff`, règles E, W, F, 79 colonnes, `ruff format`) | **0 erreur** |
-| Typage (`mypy`, `disallow_untyped_defs`) | **Success** sur 18 fichiers |
-| Documentation | `README.md` (101 lignes) + docstrings avec complexité |
+| Typage (`mypy`, `disallow_untyped_defs`) | **Success** sur 21 fichiers |
+| Documentation | `README.md` (146 lignes) + docstrings avec complexité |
 | Packaging | `pyproject.toml` (setuptools), `pip install -e .` |
 | Versionnement | git, un commit par étape ; dépôt GitHub privé `mouhameddiop212007-cyber/automate` |
 | Intégration continue | **GitHub Actions verte** (Ubuntu, Python 3.10, 3.11, 3.12 et 3.13 en matrice) : `ruff check`, `ruff format --check`, `mypy`, `pytest --cov` |
 | Reproductibilité | clone + venv neuf + `pip install -e ".[dev]"` : **146 passed, 3 skipped** ; avec `.[dev,visual]` : 149 passed |
 
-Couverture par fichier : `grammar.py`, `visualisation.py`, `_host.py`, `dfa.py`, `nfa.py`, `gnfa.py`, `learning.py` à 100 % ; `analyse.py` 99 % ; `conversions.py` 99 % ; `grammaire.py` 97 % ; `operations.py` 97 % ; `parse_tree.py` 97 % ; `base.py` 96 % ; `regex_ast.py` 94 %.
+Couverture par fichier : `grammar.py`, `visualisation.py`, `_host.py`, `dfa.py`, `nfa.py`, `gnfa.py`, `learning.py` à 100 % ; `analyse.py` 99 % ; `conversions.py` 99 % ; `grammaire.py` 97 % ; `operations.py` 97 % ; `parse_tree.py` 97 % ; `base.py` 96 % ; `regex_ast.py` 94 %. Nouveaux fichiers : `cfg.py` 99 %, `pda.py` 100 %, `buchi.py` 100 %.
 
 ## 3. Architecture actuelle
 
 ```
 automata_extensions/
 ├── regex_ast.py            # AST de regex, dérivées, lemme d'Arden, systèmes d'équations
+├── learning.py             # L* d'Angluin (DFATeacher, PredicateTeacher)
+├── cfg.py                  # ContextFreeGrammar : CNF, CYK, Earley
+├── pda.py                  # PDA, cfg_to_pda
+├── buchi.py                # BuchiAutomaton (lassos, Choueka)
 ├── fa/
 │   ├── base.py             # ExtendedFA (5 mixins) + _successors + _wrap_native_result
 │   ├── dfa.py              # ExtendedDFA(ExtendedFA, DFA)
@@ -73,6 +77,9 @@ Principes :
   - DFA à 4 états « nombre pair de a » : 2 états appris, 5 questions d'appartenance, 1 d'équivalence ;
   - « nombre de a multiple de 3 » (fonction Python) : 3 états, 19 / 2, regex apprise `((ab*ab*a|b))*` ;
   - « la 3e lettre avant la fin est un a » : 8 états (2³), 44 / 2, correct sur les 2047 mots de longueur ≤ 10.
+- **`ContextFreeGrammar`** (`cfg.py`) : `from_text("S -> a S b | ε")`, `to_cnf()`, `cyk`, `cyk_table`, `cyk_parse` (arbre), `earley_accepts`, `enumerate_words`, `to_pda()`. Mesures : `S -> a S b | ε` (2 productions) donne 7 productions en forme normale ; le langage de Dyck 9 ; une grammaire d'expressions arithmétiques (6 règles, avec règles unitaires) 20 ; l'arbre de `x+x*x` a pour feuilles `x`, `+`, `x`, `*`, `x`.
+- **`PDA`** (`pda.py`) : `find_run` renvoie un calcul acceptant (plus court, par parcours en largeur) ; `cfg_to_pda` donne un PDA à un état ; exemples écrits à la main : a^n b^n (pile vide), palindromes pairs (état final, non déterministe). Le calcul de `aabb` par le PDA de `S -> a S b | ε` compte 12 configurations.
+- **`BuchiAutomaton`** (`buchi.py`) : `accepts_lasso`, `find_accepted_lasso`, `is_empty`, `intersection`, `union`, `from_dfa`. « Une infinité de a » a pour témoin `(['a'], ['a'])` ; « un nombre fini de a » (non déterministe) `(['a'], ['b'])` ; l'intersection « infiniment de a » et « infiniment de b » compte 5 états et a pour témoin `(['a', 'b'], ['a', 'b'])` ; l'intersection avec « un nombre fini de a » est vide.
 
 Mesures (nombre d'états, sortie de terminal) :
 
@@ -103,6 +110,9 @@ Le quatrième cas est l'exemple classique d'explosion exponentielle du DFA (2³ 
 11. **Ordre d'élimination visible** : `to_regex` natif choisit seul l'état à éliminer. `to_regex_with_order` rend ce choix explicite : pour « nombre pair de a », l'ordre `i, p` donne `(ab*a|b)*` (identique au natif) et l'ordre `p, i` donne `b*a(ab*a|b)*ab*|b*`, même langage mais écriture plus lourde.
 12. **Export TikZ natif plutôt que `dot2tex`** : `dot2tex` est peu maintenu, exige Graphviz et LaTeX, et rendrait l'export intestable en CI. Un export natif est déterministe et testable ligne par ligne. **Leçon** : les premiers tests comparaient des chaînes et passaient, alors que le code produit ne compilait pas (`>=stealth'` est une syntaxe de l'ancien PGF, rejetée par PGF 3.1.10 : `Unknown arrow tip kind`). Corrigé en `>=stealth`, et ajout d'un test qui compile réellement le document avec `pdflatex` (ignoré s'il est absent).
 13. **L\* : variante de Maler et Pnueli** : tous les suffixes du contre-exemple deviennent des colonnes de la table d'observation, ce qui rend inutile le test de cohérence de la version d'origine (les lignes des mots d'accès restent distinctes par construction). Un garde-fou `ValueError` évite la boucle infinie face à un enseignant incohérent. Deux propriétés `hypothesis` vérifient sur 100 DFA aléatoires chacune que le DFA appris a le langage de la cible et autant d'états que `minify()`, et qu'il y a au plus n questions d'équivalence.
+14. **`cfg.py`, `pda.py`, `buchi.py` : modules indépendants** des mixins (ni `ExtendedFA` ni `automata-lib` : ce ne sont pas des automates finis). La forme normale de Chomsky suit l'ordre START, TERM, BIN, DEL, UNIT puis suppression des variables inutiles ; les noms frais (`S0`, `T_a`, `S_1`) évitent toute collision (apostrophes). CYK travaille sur la forme normale ; **Earley** travaille sur la grammaire d'origine (avec la correction d'Aycock et Horspool pour les variables annulables) : c'est un oracle indépendant. Les propriétés `hypothesis` comparent CYK, Earley et le PDA sur des grammaires aléatoires.
+15. **PDA : recherche bornée en hauteur de pile** (par défaut `len(mot) + 2`). Sans borne, une epsilon-transition qui empile boucle indéfiniment. Pour un PDA issu d'une grammaire en forme normale, la borne ne perd aucun mot (chaque symbole de la pile dérive au moins une lettre du reste du mot) ; pour un PDA quelconque c'est une recherche bornée, documentée dans `find_run`.
+16. **Büchi : mots ultimement périodiques et construction de Choueka.** Le langage est testé sur des lassos `prefix . loop^ω` : `accepts_lasso` cherche un arc marqué sur un cycle du graphe des lectures de `loop`. L'intersection utilise un produit à deux drapeaux (la bascule se fait sur l'état source) ; l'union ajoute un état initial neuf.
 
 ## 5. Bugs trouvés et corrigés (leçons)
 
@@ -151,10 +161,13 @@ Le quatrième cas est l'exemple classique d'explosion exponentielle du DFA (2³ 
 - `syntactic_monoid` : taille potentiellement exponentielle en |Q| (limite théorique), à réserver aux petits automates.
 - `minimize_hopcroft` : la file est une liste Python, donc ses `remove()` sont en O(n) : simplification pédagogique, la complexité O(|Q| log|Q| |Σ|) annoncée est celle de l'algorithme, pas de cette implémentation.
 - Typage : voir §6 (`FAHost`, 4 `type: ignore`, retours `Any` sur les wrappers).
-- Lignes non couvertes (31 sur 1094) : branches défensives (`base.py:61`), `__eq__` / `__hash__` de l'AST déjà exercés indirectement, cas limites de `syntactic_monoid`.
+- Lignes non couvertes (31 sur 1952) : branches défensives (`base.py:61`), `__eq__` / `__hash__` de l'AST déjà exercés indirectement, cas limites de `syntactic_monoid`.
 - Certains tests d'`automaton_morphism` parcourent des branches différentes selon l'ordre d'itération des ensembles (couverture légèrement non déterministe).
 - `ExtendedGNFA` n'hérite pas d'`ExtendedFA` (structure différente) : il n'a pas accès aux algorithmes d'analyse des mixins, seulement à ses propres méthodes.
 - `PredicateTeacher` : l'équivalence est approchée (test exhaustif jusqu'à `max_length`) ; un langage dont le DFA minimal est grand peut être mal appris si `max_length` est trop petit. Avec `DFATeacher` elle est exacte.
+- `PDA.find_run` : recherche bornée en hauteur de pile ; un résultat négatif sur un PDA quelconque n'exclut pas un calcul à pile plus haute. La conversion PDA -> grammaire n'est pas implémentée.
+- `earley_accepts` est une version pédagogique (balayage de la colonne d'origine à chaque complétion), pas en O(n³) strict ; `enumerate_words` concatène les terminaux : à réserver aux terminaux d'un caractère.
+- Büchi : pas de complémentation (construction de Safra non implémentée), donc ni inclusion ni équivalence de langages ; l'égalité n'est testée que sur des lassos.
 
 ## 9. TODO possibles (par ordre de valeur)
 
@@ -162,7 +175,7 @@ Le quatrième cas est l'exemple classique d'explosion exponentielle du DFA (2³ 
 2. Tests ciblés sur les lignes non couvertes les plus simples (`regex_ast.py`, 13 lignes).
 3. ~~Intégration continue GitHub Actions~~ : **fait**, voir §2.
 4. ~~Antimirov, `ExtendedGNFA`, export TikZ~~ : **faits**, voir §3.
-5. Extensions plus ambitieuses (non commencées) : automates à pile, automates de Büchi, CYK / forme normale de Chomsky, simulateur HTML animé (L\* d'Angluin : **fait**, voir §3).
+5. Extensions plus ambitieuses : L\* d'Angluin, CYK / forme normale de Chomsky, automates à pile, automates de Büchi (**faits**, voir §3) ; restent : simulateur HTML animé, complémentation de Büchi (Safra), conversion PDA -> grammaire.
 6. Avant le rendu : relire le README, ajouter un petit notebook d'exemples (la vérification de `pip install -e .` dans un venv propre est **faite**) ; envisager de passer le dépôt en public pour que le badge CI soit visible de tous ; matrice Python 3.10–3.12 dans la CI.
 
 ## 10. Contexte implicite et mémoire de travail
@@ -179,11 +192,11 @@ Le quatrième cas est l'exemple classique d'explosion exponentielle du DFA (2³ 
 cd ~/Documents/automate
 source automate-env/bin/activate
 pip install -e ".[dev,visual]"            # `visual` : pygraphviz + coloraide (Graphviz requis)
-pytest -q                                   # attendu : 210 passed (3 tests de visualisation ignorés sans l'extra visual, 1 test de compilation ignoré sans pdflatex)
+pytest -q                                   # attendu : 270 passed (3 tests de visualisation ignorés sans l'extra visual, 1 test de compilation ignoré sans pdflatex)
 pytest --cov=automata_extensions --cov-report=term-missing -q   # attendu : 98 %
 ruff check automata_extensions tests        # attendu : All checks passed!
 ruff format --check automata_extensions tests
-mypy                                        # attendu : Success: no issues found in 18 source files
+mypy                                        # attendu : Success: no issues found in 21 source files
 git log --oneline | head
 ```
 
